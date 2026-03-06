@@ -1,0 +1,46 @@
+FROM elixir:1.17 AS builder
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends build-essential git && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+RUN mix local.hex --force && mix local.rebar --force
+
+ENV MIX_ENV=prod
+
+COPY mix.exs mix.lock ./
+COPY config config
+RUN mix deps.get --only prod
+RUN mix deps.compile
+
+COPY lib lib
+COPY priv priv
+COPY rel rel
+RUN mix compile
+RUN mix release
+
+FROM debian:bookworm-slim AS runner
+
+RUN apt-get update -y && \
+    apt-get install -y --no-install-recommends libstdc++6 openssl libncurses6 ca-certificates locales && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN sed -i '/en_US.UTF-8/s/^# //g' /etc/locale.gen && locale-gen
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+WORKDIR /app
+
+COPY --from=builder /app/_build/prod/rel/boton_backend ./
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+
+RUN chown -R nobody:nogroup /app && \
+    chmod +x /app/docker-entrypoint.sh /app/bin/server /app/bin/migrate
+
+USER nobody
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

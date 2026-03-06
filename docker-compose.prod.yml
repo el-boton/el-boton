@@ -1,0 +1,55 @@
+name: boton-prod
+
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    image: boton-backend-prod
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PHX_SERVER: "true"
+      PORT: "4000"
+      DATABASE_URL: ecto://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      POOL_SIZE: ${POOL_SIZE:-10}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      JWT_SIGNING_SECRET: ${JWT_SIGNING_SECRET}
+      TOKEN_HASH_SECRET: ${TOKEN_HASH_SECRET}
+      SMS_PROVIDER: ${SMS_PROVIDER:-console}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_FROM_NUMBER: ${TWILIO_FROM_NUMBER:-}
+      PHX_HOST: ${PHX_HOST}
+      ECTO_IPV6: ${ECTO_IPV6:-false}
+      DNS_CLUSTER_QUERY: ${DNS_CLUSTER_QUERY:-}
+      SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - backend
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./deploy/cloudflared:/etc/cloudflared:ro
+
+volumes:
+  postgres_prod_data:

@@ -1,0 +1,7 @@
+tunnel: REPLACE_WITH_YOUR_TUNNEL_UUID
+credentials-file: /etc/cloudflared/REPLACE_WITH_YOUR_TUNNEL_UUID.json
+
+ingress:
+  - hostname: api.elbotonapp.com
+    service: http://backend:4000
+  - service: http_status:404

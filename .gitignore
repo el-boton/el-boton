@@ -45,6 +45,12 @@ yarn-error.*
 .env
 .env.*
 !.env.example
+!.env.prod.example
+
+# Cloudflare Tunnel local credentials
+deploy/cloudflared/config.yml
+deploy/cloudflared/*.json
+deploy/cloudflared/cert.pem
 
 # macOS
 .DS_Store

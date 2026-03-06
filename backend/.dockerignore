@@ -1,0 +1,6 @@
+/_build
+/deps
+/test
+/.elixir_ls
+/.git
+/*.ez

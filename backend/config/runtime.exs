@@ -20,6 +20,14 @@ if System.get_env("PHX_SERVER") do
   config :boton_backend, BotonBackendWeb.Endpoint, server: true
 end
 
+optional_env = fn name ->
+  case System.get_env(name) do
+    nil -> nil
+    "" -> nil
+    value -> value
+  end
+end
+
 config :boton_backend, BotonBackendWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
@@ -47,9 +55,9 @@ case System.get_env("SMS_PROVIDER") do
   "twilio" ->
     config :boton_backend, BotonBackend.Notifications.SMS,
       provider: BotonBackend.Notifications.TwilioSMSProvider,
-      account_sid: System.get_env("TWILIO_ACCOUNT_SID"),
-      auth_token: System.get_env("TWILIO_AUTH_TOKEN"),
-      from_number: System.get_env("TWILIO_FROM_NUMBER")
+      account_sid: optional_env.("TWILIO_ACCOUNT_SID"),
+      auth_token: optional_env.("TWILIO_AUTH_TOKEN"),
+      from_number: optional_env.("TWILIO_FROM_NUMBER")
 
   _ ->
     :ok
@@ -86,9 +94,9 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  host = System.get_env("PHX_HOST") || "example.com"
+  host = optional_env.("PHX_HOST") || "example.com"
 
-  config :boton_backend, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
+  config :boton_backend, :dns_cluster_query, optional_env.("DNS_CLUSTER_QUERY")
 
   config :boton_backend, BotonBackendWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

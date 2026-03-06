@@ -98,7 +98,7 @@
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
-				CFC53DCBB9E04D68826B9D84,
+				CFC53DCBB9E04D68826B9D84 /* ElBotonWidget */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -109,7 +109,7 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* ElBoton.app */,
-				D6E27DF5F5FD4211A007E501,
+				D6E27DF5F5FD4211A007E501 /* ElBotonWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -126,15 +126,15 @@
 		CFC53DCBB9E04D68826B9D84 /* ElBotonWidget */ = {
 			isa = PBXGroup;
 			children = (
-				50976C527E524B809953F2C7,
-				4421D2FBDD074FAABCA8EB6D,
-				5D4E81162D1542EBB72A3273,
-				4D56188C253F4BFEB26FCCCD,
-				97AD6D221B724EF0B2FC6208,
-				026049CC1763443A965F89CD,
-				C77F443CEBA1464E90D89FD7,
-				47480CA9DB2540E49E4B8E3F,
-				C7068954B70441AF8A185894,
+				50976C527E524B809953F2C7 /* ElBotonWidget.swift */,
+				4421D2FBDD074FAABCA8EB6D /* ElBotonWidgetBundle.swift */,
+				5D4E81162D1542EBB72A3273 /* AlertIntent.swift */,
+				4D56188C253F4BFEB26FCCCD /* SharedCredentials.swift */,
+				97AD6D221B724EF0B2FC6208 /* BackendAPIClient.swift */,
+				026049CC1763443A965F89CD /* LocationManager.swift */,
+				C77F443CEBA1464E90D89FD7 /* Geohash.swift */,
+				47480CA9DB2540E49E4B8E3F /* Info.plist */,
+				C7068954B70441AF8A185894 /* ElBotonWidget.entitlements */,
 			);
 			path = ElBotonWidget;
 			sourceTree = "<group>";
@@ -152,12 +152,12 @@
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				EBB91B6E56F14A4EA2A84097,
+				EBB91B6E56F14A4EA2A84097 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				A8C114F429774E91ACC2BD95,
+				A8C114F429774E91ACC2BD95 /* PBXTargetDependency */,
 			);
 			name = ElBoton;
 			productName = ElBoton;
@@ -168,9 +168,9 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 98F80D22C6AA4B17BF8B1586;
 			buildPhases = (
-				5AAC032B6A9249249119B597,
-				17803B37D3CC40F1BA4A43A3,
-				7947327E82764191B072DFBC,
+				5AAC032B6A9249249119B597 /* Sources */,
+				17803B37D3CC40F1BA4A43A3 /* Frameworks */,
+				7947327E82764191B072DFBC /* Resources */,
 			);
 			buildRules = (
 			);
@@ -178,7 +178,7 @@
 			);
 			name = ElBotonWidget;
 			productName = ElBotonWidget;
-			productReference = D6E27DF5F5FD4211A007E501;
+			productReference = D6E27DF5F5FD4211A007E501 /* ElBotonWidget.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
@@ -208,7 +208,7 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* ElBoton */,
-				B612E936219C47B7848DD117,
+				B612E936219C47B7848DD117 /* ElBotonWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -311,13 +311,13 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				1FA6CE5F618645919F608113,
-				FD5DED70EDD14085B963E4A5,
-				21F4EDEDDAE64A5DBCC49121,
-				0A8ED52139844A9EBDBB7A6A,
-				12077301F12E4F93B34BEDF6,
-				6BD62184F0664311940A6C24,
-				B92223C906D948F9936496B2,
+				1FA6CE5F618645919F608113 /* ElBotonWidget.swift in Sources */,
+				FD5DED70EDD14085B963E4A5 /* ElBotonWidgetBundle.swift in Sources */,
+				21F4EDEDDAE64A5DBCC49121 /* AlertIntent.swift in Sources */,
+				0A8ED52139844A9EBDBB7A6A /* SharedCredentials.swift in Sources */,
+				12077301F12E4F93B34BEDF6 /* BackendAPIClient.swift in Sources */,
+				6BD62184F0664311940A6C24 /* LocationManager.swift in Sources */,
+				B92223C906D948F9936496B2 /* Geohash.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -590,8 +590,8 @@
 		98F80D22C6AA4B17BF8B1586 /* Build configuration list for PBXNativeTarget "ElBotonWidget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				14B3FFF8807E4F1FB994E5FF,
-				01D57843E36B4EE6A6DFC352,
+				14B3FFF8807E4F1FB994E5FF /* Debug */,
+				01D57843E36B4EE6A6DFC352 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -623,7 +623,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				1C53BCAEB7A7433E8EC2B1E2,
+				1C53BCAEB7A7433E8EC2B1E2 /* ElBotonWidget.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
