@@ -1,0 +1,33 @@
+{
+  "cli": {
+    "version": ">= 16.28.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000",
+        "EXPO_PUBLIC_PROJECT_ID": "d0f9d2c7-003d-43c1-a49b-6b42f6182cf8"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://localhost:4000",
+        "EXPO_PUBLIC_PROJECT_ID": "d0f9d2c7-003d-43c1-a49b-6b42f6182cf8"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://api.elbotonapp.com",
+        "EXPO_PUBLIC_PROJECT_ID": "d0f9d2c7-003d-43c1-a49b-6b42f6182cf8"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

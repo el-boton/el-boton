@@ -9,33 +9,76 @@ dist/
 web-build/
 expo-env.d.ts
 
-# Native
+# EAS
+.eas/
+
+# Native - generated folders
+/ios
+/android
 .kotlin/
 *.orig.*
+
+# Signing keys and certificates
 *.jks
 *.p8
 *.p12
 *.key
+*.pem
 *.mobileprovision
+certs/
+credentials.json
+
+# Firebase/Google services (contains API keys)
+google-services.json
+GoogleService-Info.plist
 
 # Metro
 .metro-health-check*
 
-# debug
+# Debug logs
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+*.log
+
+# Environment variables
+.env
+.env.*
+!.env.example
 
 # macOS
 .DS_Store
-*.pem
+.AppleDouble
+.LSOverride
 
-# local env files
-.env*.local
+# Windows
+Thumbs.db
+ehthumbs.db
 
-# typescript
+# Linux
+*~
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# Testing
+coverage/
+.jest/
+__snapshots__/
+
+# TypeScript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# Temporary files
+tmp/
+temp/
+*.tmp
+# Build artifacts
+build/
+*.ipa
+*.apk
+*.aab

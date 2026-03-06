@@ -1,0 +1,122 @@
+{
+  "expo": {
+    "name": "El Boton",
+    "slug": "el-boton",
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "elboton",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0a0a0a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.elboton.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "El Boton needs your location to send help to the right place when you trigger an alert.",
+        "NSLocationAlwaysUsageDescription": "El Boton uses your location in the background to help nearby users find you in an emergency.",
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": ["group.com.elboton.app"],
+        "aps-environment": "production",
+        "com.apple.developer.usernotifications.critical-alerts": true
+      },
+      "appExtensions": [
+        {
+          "targetName": "ElBotonWidget",
+          "bundleIdentifier": "com.elboton.app.widget",
+          "entitlements": {
+            "com.apple.security.application-groups": ["group.com.elboton.app"]
+          }
+        }
+      ]
+    },
+    "android": {
+      "package": "com.elboton.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#0a0a0a"
+      },
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCSsNNIA3Fg8StX-eP7IMjEhdh8vaTPjC4"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED",
+        "ACCESS_NOTIFICATION_POLICY",
+        "USE_FULL_SCREEN_INTENT",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ]
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/images/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "./plugins/withCriticalAlerts",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "El Boton needs your location to send help to the right place."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/alarm.wav"
+          ]
+        }
+      ],
+      [
+        "./plugins/withAlertWidget",
+        {
+          "appGroupIdentifier": "group.com.elboton.app",
+          "iosDeploymentTarget": "17.0"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "d0f9d2c7-003d-43c1-a49b-6b42f6182cf8",
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "targetName": "ElBotonWidget",
+                  "bundleIdentifier": "com.elboton.app.widget",
+                  "entitlements": {
+                    "com.apple.security.application-groups": ["group.com.elboton.app"]
+                  }
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

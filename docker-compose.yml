@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: boton_backend_dev
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d boton_backend_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PHX_SERVER: "true"
+      PORT: "4000"
+      DATABASE_URL: ecto://postgres:postgres@postgres:5432/boton_backend_dev
+      SECRET_KEY_BASE: dev-secret-key-base-change-me-dev-secret-key-base-change-me
+      JWT_SIGNING_SECRET: dev-jwt-signing-secret-change-me
+      TOKEN_HASH_SECRET: dev-token-hash-secret-change-me
+      SMS_PROVIDER: console
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./backend:/app
+      - backend_deps:/app/deps
+      - backend_build:/app/_build
+    command: >
+      bash -lc "
+        mix deps.get &&
+        mix ecto.create &&
+        mix ecto.migrate &&
+        mix phx.server
+      "
+
+volumes:
+  postgres_data:
+  backend_deps:
+  backend_build:
