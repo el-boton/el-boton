@@ -33,7 +33,7 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
         form: [
           To: to,
           MessagingServiceSid: messaging_service_sid,
-          Body: "Your El Boton verification code is #{code}"
+          Body: "#{code} is your verification code. For your security, do not share this code."
         ]
       )
 
