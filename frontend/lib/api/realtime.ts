@@ -15,7 +15,7 @@ let socketAccessToken: string | null = null;
 // Single channel per topic, ref-counted across subscribers
 const topicChannels = new Map<
   string,
-  { channel: Channel; refCount: number; bindingRefs: Map<number, number> }
+  { channel: Channel; refCount: number; bindings: Map<number, { event: string; ref: number }> }
 >();
 let nextBindingId = 0;
 
@@ -23,10 +23,18 @@ function getSocketUrl(): string {
   return `${getApiUrl().replace(/^http/, 'ws')}/socket`;
 }
 
+function clearTopicChannels() {
+  topicChannels.forEach((entry) => {
+    try { entry.channel.leave(); } catch {}
+  });
+  topicChannels.clear();
+}
+
 async function ensureSocket(): Promise<Socket | null> {
   const session = await getSession();
   if (!session) {
     if (socket) {
+      clearTopicChannels();
       socket.disconnect();
       socket = null;
       socketAccessToken = null;
@@ -39,7 +47,9 @@ async function ensureSocket(): Promise<Socket | null> {
     return socket;
   }
 
+  // Token changed — tear down old socket and all cached channels
   if (socket) {
+    clearTopicChannels();
     socket.disconnect();
   }
 
@@ -67,7 +77,7 @@ function subscribeTopic(topic: string, bindings: Binding[]): Subscription {
     if (!entry) {
       // First subscriber — create and join the channel
       const channel = connectedSocket.channel(topic, {});
-      entry = { channel, refCount: 0, bindingRefs: new Map() };
+      entry = { channel, refCount: 0, bindings: new Map() };
       topicChannels.set(topic, entry);
 
       channel
@@ -83,7 +93,7 @@ function subscribeTopic(topic: string, bindings: Binding[]): Subscription {
     bindings.forEach(({ event, handler }) => {
       const bindingId = nextBindingId++;
       const ref = entry!.channel.on(event, handler);
-      entry!.bindingRefs.set(bindingId, ref);
+      entry!.bindings.set(bindingId, { event, ref });
       myBindingIds.push(bindingId);
     });
   })();
@@ -96,10 +106,10 @@ function subscribeTopic(topic: string, bindings: Binding[]): Subscription {
 
       // Remove this subscriber's event handlers
       myBindingIds.forEach((bindingId) => {
-        const ref = entry.bindingRefs.get(bindingId);
-        if (ref !== undefined) {
-          entry.channel.off(entry.channel.topic, ref);
-          entry.bindingRefs.delete(bindingId);
+        const binding = entry.bindings.get(bindingId);
+        if (binding) {
+          entry.channel.off(binding.event, binding.ref);
+          entry.bindings.delete(bindingId);
         }
       });
 
