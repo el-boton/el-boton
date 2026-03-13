@@ -36,6 +36,7 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
       )
 
     if response.status in 200..299 do
+      Logger.info("Twilio SMS sent: to=#{phone} sid=#{response.body["sid"]} status=#{response.body["status"]}")
       :ok
     else
       Logger.error("Twilio SMS failed: status=#{response.status} body=#{inspect(response.body)}")
