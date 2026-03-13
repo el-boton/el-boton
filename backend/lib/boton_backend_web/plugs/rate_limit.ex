@@ -12,7 +12,7 @@ defmodule BotonBackendWeb.Plugs.RateLimit do
   end
 
   def call(conn, %{limit: limit, period_ms: period_ms, key_prefix: prefix}) do
-    ip = conn.remote_ip |> :inet.ntoa() |> to_string()
+    ip = client_ip(conn)
     key = "#{prefix}:#{ip}"
 
     case Hammer.check_rate(key, period_ms, limit) do
@@ -24,6 +24,19 @@ defmodule BotonBackendWeb.Plugs.RateLimit do
         |> put_resp_content_type("application/json")
         |> send_resp(429, Jason.encode!(%{error: "rate_limited", message: "Too many requests"}))
         |> halt()
+    end
+  end
+
+  defp client_ip(conn) do
+    # Cloudflare Tunnel sets CF-Connecting-IP to the real client IP.
+    # Fall back to X-Forwarded-For, then conn.remote_ip.
+    case get_req_header(conn, "cf-connecting-ip") do
+      [ip | _] -> ip
+      [] ->
+        case get_req_header(conn, "x-forwarded-for") do
+          [forwarded | _] -> forwarded |> String.split(",") |> List.first() |> String.trim()
+          [] -> conn.remote_ip |> :inet.ntoa() |> to_string()
+        end
     end
   end
 end

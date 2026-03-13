@@ -66,7 +66,8 @@ case System.get_env("SMS_PROVIDER") do
       provider: BotonBackend.Notifications.TwilioSMSProvider,
       account_sid: optional_env.("TWILIO_ACCOUNT_SID"),
       auth_token: optional_env.("TWILIO_AUTH_TOKEN"),
-      from_number: optional_env.("TWILIO_FROM_NUMBER")
+      from_number: optional_env.("TWILIO_FROM_NUMBER"),
+      messaging_service_sid: optional_env.("TWILIO_MESSAGING_SERVICE_SID")
 
   _ ->
     :ok
