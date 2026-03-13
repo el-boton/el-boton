@@ -315,6 +315,8 @@ defmodule BotonBackend.Alerts do
   end
 
   defp broadcast_alert_update(alert) do
+    require Logger
+    Logger.info("Broadcasting alert.updated to alert:#{alert.id} status=#{alert.status}")
     Endpoint.broadcast!("alert:#{alert.id}", "alert.updated", %{alert: Serializers.alert(alert)})
   end
 
@@ -326,6 +328,8 @@ defmodule BotonBackend.Alerts do
       |> Repo.preload(responder: :profile)
       |> Enum.map(&Serializers.alert_response/1)
 
+    require Logger
+    Logger.info("Broadcasting responses.updated to alert:#{alert_id} with #{length(responses)} responses")
     Endpoint.broadcast!("alert:#{alert_id}", "responses.updated", %{responses: responses})
   end
 
