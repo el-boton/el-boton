@@ -32,6 +32,8 @@ config :boton_backend, BotonBackendWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() != :test do
+  expo_access_token = optional_env.("EXPO_ACCESS_TOKEN")
+
   config :boton_backend, BotonBackend.Repo,
     url:
       System.get_env("DATABASE_URL") ||
@@ -43,18 +45,23 @@ if config_env() != :test do
     case {optional_env.("APPLE_REVIEW_PHONE"), optional_env.("APPLE_REVIEW_CODE")} do
       {phone, code} when is_binary(phone) and is_binary(code) ->
         [apple_review_phone: phone, apple_review_code: code]
+
       _ ->
         []
     end
 
-  config :boton_backend, BotonBackend.Auth,
-    [{:jwt_secret,
-      System.get_env("JWT_SIGNING_SECRET") ||
-        raise("environment variable JWT_SIGNING_SECRET is missing")},
-     {:token_hash_secret,
-      System.get_env("TOKEN_HASH_SECRET") ||
-        raise("environment variable TOKEN_HASH_SECRET is missing")}
-    ] ++ apple_review_config
+  config :boton_backend,
+         BotonBackend.Auth,
+         [
+           {:jwt_secret,
+            System.get_env("JWT_SIGNING_SECRET") ||
+              raise("environment variable JWT_SIGNING_SECRET is missing")},
+           {:token_hash_secret,
+            System.get_env("TOKEN_HASH_SECRET") ||
+              raise("environment variable TOKEN_HASH_SECRET is missing")}
+         ] ++ apple_review_config
+
+  config :boton_backend, BotonBackend.Notifications.ExpoClient, access_token: expo_access_token
 
   config :boton_backend, BotonBackendWeb.Endpoint,
     secret_key_base:
@@ -85,6 +92,11 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  default_queue_concurrency =
+    String.to_integer(System.get_env("OBAN_DEFAULT_CONCURRENCY") || "10")
+
+  push_queue_concurrency = String.to_integer(System.get_env("OBAN_PUSH_CONCURRENCY") || "6")
+
   config :boton_backend, BotonBackend.Repo,
     ssl: System.get_env("DATABASE_SSL") == "true",
     url: database_url,
@@ -109,6 +121,11 @@ if config_env() == :prod do
   host = optional_env.("PHX_HOST") || "example.com"
 
   config :boton_backend, :dns_cluster_query, optional_env.("DNS_CLUSTER_QUERY")
+
+  config :boton_backend, Oban,
+    repo: BotonBackend.Repo,
+    queues: [default: default_queue_concurrency, push: push_queue_concurrency],
+    plugins: [{Oban.Plugins.Pruner, max_age: 86_400}]
 
   config :boton_backend, BotonBackendWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

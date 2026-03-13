@@ -6,10 +6,12 @@ defmodule BotonBackendWeb.AlertControllerTest do
 
   test "circle members can create, respond to, message, and resolve alerts", %{conn: conn} do
     sender = user_fixture(%{display_name: "Sender"})
-    responder = user_fixture(%{
-      display_name: "Responder",
-      push_token: "ExponentPushToken[responder]"
-    })
+
+    responder =
+      user_fixture(%{
+        display_name: "Responder",
+        push_token: "ExponentPushToken[responder]"
+      })
 
     circle_conn =
       conn
@@ -33,7 +35,9 @@ defmodule BotonBackendWeb.AlertControllerTest do
              "status" => "active"
            } = json_response(create_alert_conn, 200)
 
-    assert attempt = Repo.get_by(PushDeliveryAttempt, alert_id: alert_id, user_id: responder.user.id)
+    assert attempt =
+             Repo.get_by(PushDeliveryAttempt, alert_id: alert_id, user_id: responder.user.id)
+
     assert attempt.status == "skipped"
 
     history_conn =
@@ -90,11 +94,13 @@ defmodule BotonBackendWeb.AlertControllerTest do
 
   test "expanded alerts become visible to nearby users", %{conn: conn} do
     sender = user_fixture(%{display_name: "Sender"})
-    nearby_user = user_fixture(%{
-      display_name: "Nearby User",
-      latitude: 37.7750,
-      longitude: -122.4195
-    })
+
+    nearby_user =
+      user_fixture(%{
+        display_name: "Nearby User",
+        latitude: 37.7750,
+        longitude: -122.4195
+      })
 
     create_alert_conn =
       conn
@@ -127,11 +133,13 @@ defmodule BotonBackendWeb.AlertControllerTest do
 
   test "moving near an alert after expansion does not grant retroactive access", %{conn: conn} do
     sender = user_fixture(%{display_name: "Sender"})
-    distant_user = user_fixture(%{
-      display_name: "Distant User",
-      latitude: 40.7128,
-      longitude: -74.0060
-    })
+
+    distant_user =
+      user_fixture(%{
+        display_name: "Distant User",
+        latitude: 40.7128,
+        longitude: -74.0060
+      })
 
     create_alert_conn =
       conn
@@ -162,5 +170,64 @@ defmodule BotonBackendWeb.AlertControllerTest do
       |> get(~p"/alerts/history")
 
     assert json_response(moved_history_conn, 200) == []
+  end
+
+  test "expanding an alert only fans out to newly nearby recipients", %{conn: conn} do
+    sender = user_fixture(%{display_name: "Sender"})
+
+    circle_member =
+      user_fixture(%{
+        display_name: "Circle Member",
+        push_token: "ExponentPushToken[circle-member]"
+      })
+
+    nearby_user =
+      user_fixture(%{
+        display_name: "Nearby User",
+        push_token: "ExponentPushToken[nearby-user]",
+        latitude: 37.7750,
+        longitude: -122.4195
+      })
+
+    circle_conn =
+      conn
+      |> auth_conn(sender.session)
+      |> post(~p"/circles", %{name: "Family"})
+
+    %{"invite_code" => invite_code} = json_response(circle_conn, 200)
+
+    build_conn()
+    |> auth_conn(circle_member.session)
+    |> post(~p"/circles/join", %{invite_code: invite_code})
+    |> json_response(200)
+
+    create_alert_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts", %{latitude: 37.7749, longitude: -122.4194})
+
+    %{"id" => alert_id} = json_response(create_alert_conn, 200)
+
+    initial_attempts =
+      PushDeliveryAttempt
+      |> Repo.all()
+      |> Enum.filter(&(&1.alert_id == alert_id))
+
+    assert Enum.map(initial_attempts, & &1.user_id) == [circle_member.user.id]
+
+    expand_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts/#{alert_id}/expand", %{})
+
+    assert %{"id" => ^alert_id, "expand_to_nearby" => true} = json_response(expand_conn, 200)
+
+    attempts_after_expand =
+      PushDeliveryAttempt
+      |> Repo.all()
+      |> Enum.filter(&(&1.alert_id == alert_id))
+
+    assert Enum.count(attempts_after_expand, &(&1.user_id == circle_member.user.id)) == 1
+    assert Enum.count(attempts_after_expand, &(&1.user_id == nearby_user.user.id)) == 1
   end
 end

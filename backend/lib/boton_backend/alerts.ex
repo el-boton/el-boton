@@ -36,12 +36,19 @@ defmodule BotonBackend.Alerts do
         insert_alert_recipients(repo, alert.id, circle_recipient_ids, "circle")
       end)
       |> Notifications.put_alert_fanout_job(:fanout_job, fn %{alert: alert} ->
-        BotonBackend.Notifications.AlertFanoutWorker.new(%{"alert_id" => alert.id})
+        BotonBackend.Notifications.AlertFanoutWorker.new(
+          Notifications.alert_fanout_job_args(alert.id, circle_recipient_ids)
+        )
       end)
       |> Repo.transaction()
       |> case do
         {:ok, %{alert: alert}} ->
-          Accounts.record_audit("alert_created", %{user_id: user_id, ip_address: context.ip_address, metadata: %{alert_id: alert.id}})
+          Accounts.record_audit("alert_created", %{
+            user_id: user_id,
+            ip_address: context.ip_address,
+            metadata: %{alert_id: alert.id}
+          })
+
           alert = Repo.preload(alert, sender: :profile)
           broadcast_alert_update(alert)
           broadcast_user_alerts(alert)
@@ -66,7 +73,10 @@ defmodule BotonBackend.Alerts do
 
   def history_for_user(user_id) do
     accessible_alerts_query(user_id)
-    |> order_by([alert], asc: fragment("CASE WHEN ? = 'active' THEN 0 ELSE 1 END", alert.status), desc: alert.created_at)
+    |> order_by([alert],
+      asc: fragment("CASE WHEN ? = 'active' THEN 0 ELSE 1 END", alert.status),
+      desc: alert.created_at
+    )
     |> Repo.all()
     |> Repo.preload(sender: :profile)
     |> Enum.map(&Serializers.alert_with_sender/1)
@@ -83,30 +93,47 @@ defmodule BotonBackend.Alerts do
   def expand_alert(user_id, alert_id) do
     with %Alert{} = alert <- Repo.get(Alert, alert_id),
          true <- alert.sender_id == user_id do
-      Multi.new()
-      |> Multi.update(:alert, Ecto.Changeset.change(alert, expand_to_nearby: true))
-      |> Multi.run(:nearby_recipients, fn repo, %{alert: updated_alert} ->
-        insert_alert_recipients(
-          repo,
-          updated_alert.id,
-          Notifications.nearby_user_ids(updated_alert),
-          "nearby"
-        )
-      end)
-      |> Repo.transaction()
-      |> case do
-        {:ok, %{alert: updated_alert}} ->
-          _job = Notifications.enqueue_alert_fanout(updated_alert.id)
-          updated_alert = Repo.preload(updated_alert, sender: :profile)
-          broadcast_alert_update(updated_alert)
-          broadcast_user_alerts(updated_alert)
-          {:ok, Serializers.alert(updated_alert)}
+      cond do
+        alert.status != "active" ->
+          {:error, :alert_not_active, "Only active alerts can be expanded"}
 
-        {:error, _step, %Ecto.Changeset{} = changeset, _changes} ->
-          {:error, :validation_failed, translate_error(changeset)}
+        alert.expand_to_nearby ->
+          alert = Repo.preload(alert, sender: :profile)
+          {:ok, Serializers.alert(alert)}
 
-        {:error, _step, _reason, _changes} ->
-          {:error, :alert_expand_failed, "Failed to expand alert"}
+        true ->
+          Multi.new()
+          |> Multi.update(:alert, Ecto.Changeset.change(alert, expand_to_nearby: true))
+          |> Multi.run(:nearby_recipients, fn repo, %{alert: updated_alert} ->
+            insert_alert_recipients(
+              repo,
+              updated_alert.id,
+              Notifications.nearby_user_ids(updated_alert),
+              "nearby"
+            )
+          end)
+          |> Notifications.put_alert_fanout_job(:fanout_job, fn %{
+                                                                  alert: updated_alert,
+                                                                  nearby_recipients: recipient_ids
+                                                                } ->
+            BotonBackend.Notifications.AlertFanoutWorker.new(
+              Notifications.alert_fanout_job_args(updated_alert.id, recipient_ids)
+            )
+          end)
+          |> Repo.transaction()
+          |> case do
+            {:ok, %{alert: updated_alert}} ->
+              updated_alert = Repo.preload(updated_alert, sender: :profile)
+              broadcast_alert_update(updated_alert)
+              broadcast_user_alerts(updated_alert)
+              {:ok, Serializers.alert(updated_alert)}
+
+            {:error, _step, %Ecto.Changeset{} = changeset, _changes} ->
+              {:error, :validation_failed, translate_error(changeset)}
+
+            {:error, _step, _reason, _changes} ->
+              {:error, :alert_expand_failed, "Failed to expand alert"}
+          end
       end
     else
       false -> {:error, :not_found, "Alert not found"}
@@ -268,13 +295,21 @@ defmodule BotonBackend.Alerts do
 
     recent_count =
       BotonBackend.Accounts.AuditLog
-      |> where([audit], audit.action == "alert_created" and audit.user_id == ^user_id and audit.recorded_at >= ^recent_since)
+      |> where(
+        [audit],
+        audit.action == "alert_created" and audit.user_id == ^user_id and
+          audit.recorded_at >= ^recent_since
+      )
       |> Repo.aggregate(:count, :id)
 
     if recent_count >= @alert_rate_limit_max do
       {:error, :alert_rate_limited, "Too many alerts created in a short period"}
     else
-      Accounts.record_audit("alert_rate_checked", %{user_id: user_id, ip_address: context.ip_address})
+      Accounts.record_audit("alert_rate_checked", %{
+        user_id: user_id,
+        ip_address: context.ip_address
+      })
+
       :ok
     end
   end
@@ -295,7 +330,9 @@ defmodule BotonBackend.Alerts do
   end
 
   defp broadcast_message_inserted(alert_id, alert_message) do
-    Endpoint.broadcast!("alert:#{alert_id}", "message.inserted", %{message: Serializers.alert_message(alert_message)})
+    Endpoint.broadcast!("alert:#{alert_id}", "message.inserted", %{
+      message: Serializers.alert_message(alert_message)
+    })
   end
 
   defp broadcast_user_alerts(alert) do
@@ -315,14 +352,29 @@ defmodule BotonBackend.Alerts do
     |> Repo.all()
   end
 
-  defp insert_alert_recipients(_repo, _alert_id, [], _reason), do: {:ok, 0}
+  defp insert_alert_recipients(_repo, _alert_id, [], _reason), do: {:ok, []}
 
   defp insert_alert_recipients(repo, alert_id, recipient_ids, reason) do
     granted_at = DateTime.utc_now()
+    unique_recipient_ids = Enum.uniq(recipient_ids)
+
+    existing_recipient_ids =
+      AlertRecipient
+      |> where(
+        [recipient],
+        recipient.alert_id == ^alert_id and recipient.user_id in ^unique_recipient_ids
+      )
+      |> select([recipient], recipient.user_id)
+      |> repo.all()
+      |> MapSet.new()
+
+    new_recipient_ids =
+      Enum.reject(unique_recipient_ids, fn user_id ->
+        MapSet.member?(existing_recipient_ids, user_id)
+      end)
 
     entries =
-      recipient_ids
-      |> Enum.uniq()
+      new_recipient_ids
       |> Enum.map(fn user_id ->
         %{
           alert_id: alert_id,
@@ -338,7 +390,11 @@ defmodule BotonBackend.Alerts do
         conflict_target: [:alert_id, :user_id]
       )
 
-    {:ok, count}
+    if count == length(new_recipient_ids) do
+      {:ok, new_recipient_ids}
+    else
+      {:error, :alert_recipient_insert_failed}
+    end
   end
 
   defp translate_error(changeset) do
