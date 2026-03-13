@@ -13,9 +13,16 @@ defmodule BotonBackend.Accounts do
   @otp_request_limit 5
   @otp_ip_request_limit 10
 
+  @apple_review_phone "+15555555555"
+  @apple_review_code "102213"
+
   def get_user(user_id), do: Repo.get(User, user_id)
 
   def get_profile(user_id), do: Repo.get(Profile, user_id)
+
+  def request_otp(phone, _context) when phone in [@apple_review_phone, "15555555555", "5555555555"] do
+    {:ok, %{ok: true}}
+  end
 
   def request_otp(phone, context) do
     normalized_phone = normalize_phone(phone)
@@ -50,6 +57,19 @@ defmodule BotonBackend.Accounts do
         {:error, _changeset} ->
           {:error, :otp_request_failed, "Failed to request verification code"}
       end
+    end
+  end
+
+  def verify_otp(phone, @apple_review_code, context) when phone in [@apple_review_phone, "15555555555", "5555555555"] do
+    normalized_phone = normalize_phone(phone)
+
+    with {:ok, user} <- get_or_create_user(normalized_phone),
+         {:ok, _profile} <- ensure_profile(user),
+         {:ok, session} <- create_session(user, context) do
+      record_audit("otp_verified", %{user_id: user.id, phone: normalized_phone, ip_address: context.ip_address, metadata: %{apple_review: true}})
+      {:ok, session}
+    else
+      _ -> {:error, :invalid_otp, "Invalid or expired verification code"}
     end
   end
 
