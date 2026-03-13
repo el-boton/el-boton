@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, View, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { router } from 'expo-router';
 import {
   YStack,
@@ -99,22 +99,6 @@ const ErrorBanner = styled(XStack, {
   justifyContent: 'center',
 });
 
-const StatusBar = styled(XStack, {
-  paddingHorizontal: '$6',
-  paddingBottom: '$6',
-  justifyContent: 'center',
-});
-
-const StatusPill = styled(XStack, {
-  backgroundColor: '$bgDeep',
-  borderRadius: 20,
-  paddingHorizontal: '$4',
-  paddingVertical: '$2',
-  borderWidth: 1,
-  borderColor: '$borderSubtle',
-  alignItems: 'center',
-  gap: '$2',
-});
 
 export default function LoginScreen() {
   const { t } = useTranslation();
@@ -252,24 +236,7 @@ export default function LoginScreen() {
           ) : null}
         </FormSection>
 
-        <StatusBar>
-          <StatusPill>
-            <View style={styles.statusDot} />
-            <Text color="$textTertiary" fontSize={11} fontWeight="600" letterSpacing={1}>
-              {t('common.secureConnection')}
-            </Text>
-          </StatusPill>
-        </StatusBar>
       </Container>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#5C8A6E',
-  },
-});

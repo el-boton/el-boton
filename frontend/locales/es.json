@@ -81,6 +81,8 @@
     "locationError": "No se pudo obtener tu ubicacion. Por favor intenta de nuevo.",
     "circleCount": "{{count}} circulos",
     "memberCount": "{{count}} miembros",
+    "locationDisabled": "Ubicacion desactivada — toca para activar en Ajustes",
+    "notificationsDisabled": "Notificaciones desactivadas — no recibiras alertas",
     "systemReady": "Sistema listo",
     "lastAlert": "Ultima alerta: {{time}}",
     "noAlertHistory": "Sin alertas aun"

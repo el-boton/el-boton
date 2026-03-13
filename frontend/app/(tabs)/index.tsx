@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
-import { YStack, XStack, Text, styled } from 'tamagui';
-import { Users, Shield } from '@tamagui/lucide-icons';
+import { YStack, XStack, Text, Button, styled } from 'tamagui';
+import { Users, Shield, MapPin, Bell } from '@tamagui/lucide-icons';
 import { useTranslation } from 'react-i18next';
 import { BigRedButton } from '@/components/BigRedButton';
 import { createAlert } from '@/lib/alerts';
@@ -23,6 +24,8 @@ export default function HomeScreen() {
   const cachedLocation = useRef<Location.LocationObject | null>(null);
   const lastGeohashUpdate = useRef<number>(0);
   const [circles, setCircles] = useState<CircleWithRole[]>([]);
+  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const isOnboardingComplete = !profileLoading && !!profile?.display_name;
 
@@ -48,10 +51,10 @@ export default function HomeScreen() {
 
     (async () => {
       const { status } = await Location.getForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert(t('home.locationRequired'), t('home.locationPermissionMessage'));
-        return;
-      }
+      setLocationEnabled(status === 'granted');
+      const { status: notifStatus } = await Notifications.getPermissionsAsync();
+      setNotificationsEnabled(notifStatus === 'granted');
+      if (status !== 'granted') return;
       try {
         const location = await getLocationWithFallback();
         cachedLocation.current = location;
@@ -128,8 +131,52 @@ export default function HomeScreen() {
 
   return (
     <Container>
+      {/* Permission warnings */}
+      {(!locationEnabled || !notificationsEnabled) && (
+        <YStack paddingTop="$14" paddingHorizontal="$6" gap="$2">
+          {!locationEnabled && (
+            <Button
+              backgroundColor="$signalSubtle"
+              borderWidth={1}
+              borderColor="$signalBorder"
+              borderRadius="$3"
+              paddingVertical="$3"
+              paddingHorizontal="$4"
+              onPress={() => Linking.openSettings()}
+              pressStyle={{ opacity: 0.8 }}
+            >
+              <XStack alignItems="center" gap="$2.5" flex={1}>
+                <MapPin size={16} color="$signal" />
+                <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
+                  {t('home.locationDisabled')}
+                </Text>
+              </XStack>
+            </Button>
+          )}
+          {!notificationsEnabled && (
+            <Button
+              backgroundColor="$signalSubtle"
+              borderWidth={1}
+              borderColor="$signalBorder"
+              borderRadius="$3"
+              paddingVertical="$3"
+              paddingHorizontal="$4"
+              onPress={() => Linking.openSettings()}
+              pressStyle={{ opacity: 0.8 }}
+            >
+              <XStack alignItems="center" gap="$2.5" flex={1}>
+                <Bell size={16} color="$signal" />
+                <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
+                  {t('home.notificationsDisabled')}
+                </Text>
+              </XStack>
+            </Button>
+          )}
+        </YStack>
+      )}
+
       {/* Status area */}
-      <YStack paddingTop="$14" paddingHorizontal="$6" alignItems="center">
+      <YStack paddingTop={(!locationEnabled || !notificationsEnabled) ? '$4' : '$14'} paddingHorizontal="$6" alignItems="center">
         <XStack alignItems="center" gap="$2" opacity={0.6}>
           <Shield size={14} color="$sage" />
           <Text color="$sage" fontSize={12} fontWeight="600" letterSpacing={1}>

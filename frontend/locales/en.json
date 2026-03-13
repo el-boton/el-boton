@@ -81,6 +81,8 @@
     "locationError": "Could not get your location. Please try again.",
     "circleCount": "{{count}} circles",
     "memberCount": "{{count}} members",
+    "locationDisabled": "Location is off — tap to enable in Settings",
+    "notificationsDisabled": "Notifications are off — you won't receive alerts",
     "systemReady": "System ready",
     "lastAlert": "Last alert: {{time}}",
     "noAlertHistory": "No alerts yet"

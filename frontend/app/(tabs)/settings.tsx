@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import {
   YStack,
   XStack,
@@ -189,7 +190,8 @@ export default function SettingsScreen() {
   const checkPermissions = async () => {
     const { status: locStatus } = await Location.getForegroundPermissionsAsync();
     setLocationEnabled(locStatus === 'granted');
-    setNotificationsEnabled(true);
+    const { status: notifStatus } = await Notifications.getPermissionsAsync();
+    setNotificationsEnabled(notifStatus === 'granted');
   };
 
   const updateProfile = async () => {

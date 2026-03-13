@@ -137,7 +137,8 @@ export default function LocationScreen() {
       </ContentSection>
 
       <FooterSection>
-        <PrimaryButton loading={loading} onPress={requestLocationPermission} width="100%">
+        <ProgressIndicator currentStep={3} totalSteps={4} />
+        <PrimaryButton loading={loading} onPress={requestLocationPermission} width="100%" marginTop="$4">
           <XStack alignItems="center" gap="$2">
             <Text color="white" fontWeight="700" fontSize={15}>{t('onboarding.enableLocation')}</Text>
             <ChevronRight size={18} color="white" />
@@ -152,9 +153,6 @@ export default function LocationScreen() {
         >
           <Text color="$textTertiary" fontSize={14} fontWeight="500">{t('onboarding.skipLocation')}</Text>
         </Button>
-        <YStack marginTop="$4">
-          <ProgressIndicator currentStep={3} totalSteps={4} />
-        </YStack>
       </FooterSection>
     </Container>
   );

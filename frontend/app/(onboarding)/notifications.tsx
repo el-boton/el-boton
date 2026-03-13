@@ -130,7 +130,8 @@ export default function NotificationsScreen() {
       </ContentSection>
 
       <FooterSection>
-        <PrimaryButton loading={loading} onPress={requestNotificationPermission} width="100%">
+        <ProgressIndicator currentStep={4} totalSteps={4} />
+        <PrimaryButton loading={loading} onPress={requestNotificationPermission} width="100%" marginTop="$4">
           <XStack alignItems="center" gap="$2">
             <Text color="white" fontWeight="700" fontSize={15}>{t('onboarding.enableNotifications')}</Text>
             <ChevronRight size={18} color="white" />
@@ -145,9 +146,6 @@ export default function NotificationsScreen() {
         >
           <Text color="$textTertiary" fontSize={14} fontWeight="500">{t('onboarding.skipNotifications')}</Text>
         </Button>
-        <YStack marginTop="$4">
-          <ProgressIndicator currentStep={4} totalSteps={4} />
-        </YStack>
       </FooterSection>
     </Container>
   );
