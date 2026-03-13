@@ -9,15 +9,21 @@ defmodule BotonBackendWeb.AuthController do
     channel = Map.get(params, "channel", "sms")
 
     case Accounts.request_otp(phone, ControllerHelpers.request_context(conn), channel) do
-      {:ok, result} -> json(conn, result)
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, result} ->
+        json(conn, result)
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
   def verify(conn, %{"phone" => phone, "code" => code}) do
     case Accounts.verify_otp(phone, code, ControllerHelpers.request_context(conn)) do
-      {:ok, session} -> json(conn, Serializers.session(session))
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, session} ->
+        json(conn, Serializers.session(session))
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 

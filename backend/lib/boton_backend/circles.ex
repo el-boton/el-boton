@@ -18,7 +18,9 @@ defmodule BotonBackend.Circles do
     CircleMember
     |> where([member], member.user_id == ^user_id)
     |> join(:inner, [member], circle in Circle, on: circle.id == member.circle_id)
-    |> join(:left, [member, circle], counts in subquery(member_counts), on: counts.circle_id == circle.id)
+    |> join(:left, [member, circle], counts in subquery(member_counts),
+      on: counts.circle_id == circle.id
+    )
     |> select([member, circle, counts], %{
       id: circle.id,
       name: circle.name,
@@ -131,7 +133,8 @@ defmodule BotonBackend.Circles do
   end
 
   def leave_circle(user_id, circle_id) do
-    with %CircleMember{} = membership <- Repo.get_by(CircleMember, circle_id: circle_id, user_id: user_id) do
+    with %CircleMember{} = membership <-
+           Repo.get_by(CircleMember, circle_id: circle_id, user_id: user_id) do
       if membership.role == "owner" do
         member_count =
           CircleMember
@@ -155,7 +158,8 @@ defmodule BotonBackend.Circles do
   def remove_member(requesting_user_id, circle_id, member_user_id) do
     with :ok <- ensure_owner(circle_id, requesting_user_id),
          false <- requesting_user_id == member_user_id,
-         %CircleMember{} = member <- Repo.get_by(CircleMember, circle_id: circle_id, user_id: member_user_id) do
+         %CircleMember{} = member <-
+           Repo.get_by(CircleMember, circle_id: circle_id, user_id: member_user_id) do
       Repo.delete(member)
       {:ok, :removed}
     else
@@ -199,7 +203,10 @@ defmodule BotonBackend.Circles do
     |> join(:inner, [sender_member], recipient_member in CircleMember,
       on: sender_member.circle_id == recipient_member.circle_id
     )
-    |> where([sender_member, recipient_member], sender_member.user_id == ^sender_id and recipient_member.user_id == ^user_id)
+    |> where(
+      [sender_member, recipient_member],
+      sender_member.user_id == ^sender_id and recipient_member.user_id == ^user_id
+    )
     |> Repo.exists?()
   end
 

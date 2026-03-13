@@ -39,10 +39,12 @@ defmodule BotonBackendWeb.AlertChannelTest do
 
   test "user alerts channels receive alert update notifications" do
     sender = user_fixture(%{display_name: "Sender"})
-    responder = user_fixture(%{
-      display_name: "Responder",
-      push_token: "ExponentPushToken[responder]"
-    })
+
+    responder =
+      user_fixture(%{
+        display_name: "Responder",
+        push_token: "ExponentPushToken[responder]"
+      })
 
     circle = circle_fixture(sender)
     {:ok, _circle} = Circles.join_circle(responder.user.id, circle.invite_code)

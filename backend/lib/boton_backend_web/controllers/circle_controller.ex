@@ -17,8 +17,11 @@ defmodule BotonBackendWeb.CircleController do
     user = conn.assigns.current_user
 
     case Circles.create_circle(user.id, name) do
-      {:ok, circle} -> json(conn, Serializers.circle_with_role(circle))
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, circle} ->
+        json(conn, Serializers.circle_with_role(circle))
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -26,8 +29,11 @@ defmodule BotonBackendWeb.CircleController do
     user = conn.assigns.current_user
 
     case Circles.join_circle(user.id, invite_code) do
-      {:ok, circle} -> json(conn, Serializers.circle_with_role(circle))
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, circle} ->
+        json(conn, Serializers.circle_with_role(circle))
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -44,8 +50,11 @@ defmodule BotonBackendWeb.CircleController do
     user = conn.assigns.current_user
 
     case Circles.leave_circle(user.id, circle_id) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -53,8 +62,11 @@ defmodule BotonBackendWeb.CircleController do
     user = conn.assigns.current_user
 
     case Circles.remove_member(user.id, circle_id, member_user_id) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -62,8 +74,11 @@ defmodule BotonBackendWeb.CircleController do
     user = conn.assigns.current_user
 
     case Circles.delete_circle(user.id, circle_id) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 end

@@ -23,7 +23,16 @@ defmodule BotonBackend.Alerts.Alert do
 
   def changeset(alert, attrs) do
     alert
-    |> cast(attrs, [:sender_id, :latitude, :longitude, :geohash, :location, :status, :expand_to_nearby, :resolved_at])
+    |> cast(attrs, [
+      :sender_id,
+      :latitude,
+      :longitude,
+      :geohash,
+      :location,
+      :status,
+      :expand_to_nearby,
+      :resolved_at
+    ])
     |> validate_required([:sender_id, :latitude, :longitude, :geohash, :location, :status])
   end
 end
@@ -40,7 +49,10 @@ defmodule BotonBackend.Alerts.AlertResponse do
     field :responded_at, :utc_datetime_usec
 
     belongs_to :alert, BotonBackend.Alerts.Alert, primary_key: true
-    belongs_to :responder, BotonBackend.Accounts.User, foreign_key: :responder_id, primary_key: true
+
+    belongs_to :responder, BotonBackend.Accounts.User,
+      foreign_key: :responder_id,
+      primary_key: true
   end
 
   def changeset(response, attrs) do

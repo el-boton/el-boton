@@ -3,8 +3,12 @@ defmodule BotonBackend.Repo.Migrations.CreateAlertRecipients do
 
   def change do
     create table(:alert_recipients, primary_key: false) do
-      add :alert_id, references(:alerts, type: :binary_id, on_delete: :delete_all), primary_key: true
-      add :user_id, references(:users, type: :binary_id, on_delete: :delete_all), primary_key: true
+      add :alert_id, references(:alerts, type: :binary_id, on_delete: :delete_all),
+        primary_key: true
+
+      add :user_id, references(:users, type: :binary_id, on_delete: :delete_all),
+        primary_key: true
+
       add :reason, :string, null: false
       add :granted_at, :utc_datetime_usec, default: fragment("NOW()"), null: false
     end

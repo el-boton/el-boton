@@ -87,6 +87,7 @@ defmodule BotonBackend.Repo.Migrations.CreateOwnedBackendSchema do
     end
 
     create index(:circle_members, [:user_id])
+
     execute(
       "ALTER TABLE circle_members ADD CONSTRAINT circle_members_role_check CHECK (role IN ('owner', 'member'))"
     )
@@ -109,12 +110,14 @@ defmodule BotonBackend.Repo.Migrations.CreateOwnedBackendSchema do
     create index(:alerts, [:status])
     create index(:alerts, [:geohash])
     execute("CREATE INDEX alerts_location_idx ON alerts USING GIST (location)")
+
     execute(
       "ALTER TABLE alerts ADD CONSTRAINT alerts_status_check CHECK (status IN ('active', 'resolved', 'cancelled'))"
     )
 
     create table(:alert_responses, primary_key: false) do
-      add :alert_id, references(:alerts, type: :binary_id, on_delete: :delete_all), primary_key: true
+      add :alert_id, references(:alerts, type: :binary_id, on_delete: :delete_all),
+        primary_key: true
 
       add :responder_id, references(:users, type: :binary_id, on_delete: :delete_all),
         primary_key: true
@@ -124,6 +127,7 @@ defmodule BotonBackend.Repo.Migrations.CreateOwnedBackendSchema do
     end
 
     create index(:alert_responses, [:responder_id])
+
     execute(
       "ALTER TABLE alert_responses ADD CONSTRAINT alert_responses_status_check CHECK (status IN ('acknowledged', 'en_route', 'arrived'))"
     )

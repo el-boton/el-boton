@@ -49,5 +49,4 @@ config :boton_backend, BotonBackend.Auth,
   jwt_secret: "test-jwt-signing-secret",
   token_hash_secret: "test-token-hash-secret"
 
-config :boton_backend, BotonBackend.Notifications.ExpoClient,
-  enabled: false
+config :boton_backend, BotonBackend.Notifications.ExpoClient, enabled: false

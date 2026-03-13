@@ -33,8 +33,16 @@ defmodule BotonBackendWeb.CircleControllerTest do
 
     members = json_response(members_conn, 200)
 
-    assert Enum.any?(members, &(&1["role"] == "owner" and &1["profile"]["display_name"] == "Owner"))
-    assert Enum.any?(members, &(&1["role"] == "member" and &1["profile"]["display_name"] == "Member"))
+    assert Enum.any?(
+             members,
+             &(&1["role"] == "owner" and &1["profile"]["display_name"] == "Owner")
+           )
+
+    assert Enum.any?(
+             members,
+             &(&1["role"] == "member" and &1["profile"]["display_name"] == "Member")
+           )
+
     refute Enum.any?(members, &Map.has_key?(&1["profile"], "phone"))
     refute Enum.any?(members, &Map.has_key?(&1["profile"], "push_token"))
   end

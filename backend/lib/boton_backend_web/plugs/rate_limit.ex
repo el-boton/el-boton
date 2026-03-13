@@ -31,7 +31,9 @@ defmodule BotonBackendWeb.Plugs.RateLimit do
     # Cloudflare Tunnel sets CF-Connecting-IP to the real client IP.
     # Fall back to X-Forwarded-For, then conn.remote_ip.
     case get_req_header(conn, "cf-connecting-ip") do
-      [ip | _] -> ip
+      [ip | _] ->
+        ip
+
       [] ->
         case get_req_header(conn, "x-forwarded-for") do
           [forwarded | _] -> forwarded |> String.split(",") |> List.first() |> String.trim()

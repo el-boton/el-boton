@@ -52,10 +52,16 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
       )
 
     if response.status in 200..299 do
-      Logger.info("Twilio #{channel} sent: to=#{phone} sid=#{response.body["sid"]} status=#{response.body["status"]}")
+      Logger.info(
+        "Twilio #{channel} sent: to=#{phone} sid=#{response.body["sid"]} status=#{response.body["status"]}"
+      )
+
       :ok
     else
-      Logger.error("Twilio #{channel} failed: status=#{response.status} body=#{inspect(response.body)}")
+      Logger.error(
+        "Twilio #{channel} failed: status=#{response.status} body=#{inspect(response.body)}"
+      )
+
       {:error, :twilio_delivery_failed}
     end
   rescue

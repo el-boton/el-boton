@@ -57,13 +57,20 @@ defmodule BotonBackend.Accounts do
 
     case refresh_token do
       nil ->
-        record_audit("refresh_failed", %{ip_address: context.ip_address, metadata: %{reason: "invalid_refresh_token"}})
+        record_audit("refresh_failed", %{
+          ip_address: context.ip_address,
+          metadata: %{reason: "invalid_refresh_token"}
+        })
+
         {:error, :invalid_refresh_token, "Invalid refresh token"}
 
       %RefreshToken{} = token ->
         Repo.transaction(fn ->
           token
-          |> Ecto.Changeset.change(revoked_at: DateTime.utc_now(), last_used_at: DateTime.utc_now())
+          |> Ecto.Changeset.change(
+            revoked_at: DateTime.utc_now(),
+            last_used_at: DateTime.utc_now()
+          )
           |> Repo.update!()
 
           case create_session(token.user, context) do
@@ -73,7 +80,11 @@ defmodule BotonBackend.Accounts do
         end)
         |> case do
           {:ok, session} ->
-            record_audit("refresh_succeeded", %{user_id: token.user_id, ip_address: context.ip_address})
+            record_audit("refresh_succeeded", %{
+              user_id: token.user_id,
+              ip_address: context.ip_address
+            })
+
             {:ok, session}
 
           {:error, _reason} ->
@@ -109,7 +120,12 @@ defmodule BotonBackend.Accounts do
 
       %User{} = user ->
         Repo.transaction(fn ->
-          record_audit("account_deleted", %{user_id: user_id, phone: user.phone, ip_address: context.ip_address})
+          record_audit("account_deleted", %{
+            user_id: user_id,
+            phone: user.phone,
+            ip_address: context.ip_address
+          })
+
           Repo.delete!(user)
         end)
 
@@ -163,7 +179,13 @@ defmodule BotonBackend.Accounts do
     with {:ok, user} <- get_or_create_user(phone),
          {:ok, _profile} <- ensure_profile(user),
          {:ok, session} <- create_session(user, context) do
-      record_audit("otp_verified", %{user_id: user.id, phone: phone, ip_address: context.ip_address, metadata: %{apple_review: true}})
+      record_audit("otp_verified", %{
+        user_id: user.id,
+        phone: phone,
+        ip_address: context.ip_address,
+        metadata: %{apple_review: true}
+      })
+
       {:ok, session}
     else
       _ -> {:error, :invalid_otp, "Invalid or expired verification code"}
@@ -193,7 +215,12 @@ defmodule BotonBackend.Accounts do
         {:ok, challenge} ->
           case send_otp(phone, code, channel) do
             :ok ->
-              record_audit("otp_requested", %{phone: phone, ip_address: context.ip_address, metadata: %{challenge_id: challenge.id}})
+              record_audit("otp_requested", %{
+                phone: phone,
+                ip_address: context.ip_address,
+                metadata: %{challenge_id: challenge.id}
+              })
+
               {:ok, %{ok: true}}
 
             {:error, _reason} ->
@@ -209,7 +236,12 @@ defmodule BotonBackend.Accounts do
   defp do_verify_otp(phone, code, context) do
     case latest_active_challenge(phone) do
       nil ->
-        record_audit("otp_verify_failed", %{phone: phone, ip_address: context.ip_address, metadata: %{reason: "missing_challenge"}})
+        record_audit("otp_verify_failed", %{
+          phone: phone,
+          ip_address: context.ip_address,
+          metadata: %{reason: "missing_challenge"}
+        })
+
         {:error, :invalid_otp, "Invalid or expired verification code"}
 
       %PhoneOtpChallenge{} = challenge ->
@@ -220,11 +252,21 @@ defmodule BotonBackend.Accounts do
   defp verify_challenge(challenge, phone, code, context) do
     cond do
       DateTime.compare(challenge.expires_at, DateTime.utc_now()) == :lt ->
-        record_audit("otp_verify_failed", %{phone: phone, ip_address: context.ip_address, metadata: %{reason: "expired"}})
+        record_audit("otp_verify_failed", %{
+          phone: phone,
+          ip_address: context.ip_address,
+          metadata: %{reason: "expired"}
+        })
+
         {:error, :invalid_otp, "Invalid or expired verification code"}
 
       challenge.attempt_count >= auth_config(:otp_max_attempts) ->
-        record_audit("otp_verify_failed", %{phone: phone, ip_address: context.ip_address, metadata: %{reason: "locked"}})
+        record_audit("otp_verify_failed", %{
+          phone: phone,
+          ip_address: context.ip_address,
+          metadata: %{reason: "locked"}
+        })
+
         {:error, :invalid_otp, "Invalid or expired verification code"}
 
       challenge.code_hash != hash_secret("#{challenge.code_salt}:#{phone}:#{code}") ->
@@ -232,19 +274,32 @@ defmodule BotonBackend.Accounts do
         |> Ecto.Changeset.change(attempt_count: challenge.attempt_count + 1)
         |> Repo.update()
 
-        record_audit("otp_verify_failed", %{phone: phone, ip_address: context.ip_address, metadata: %{reason: "mismatch"}})
+        record_audit("otp_verify_failed", %{
+          phone: phone,
+          ip_address: context.ip_address,
+          metadata: %{reason: "mismatch"}
+        })
+
         {:error, :invalid_otp, "Invalid or expired verification code"}
 
       true ->
         Multi.new()
-        |> Multi.update(:challenge, Ecto.Changeset.change(challenge, consumed_at: DateTime.utc_now()))
+        |> Multi.update(
+          :challenge,
+          Ecto.Changeset.change(challenge, consumed_at: DateTime.utc_now())
+        )
         |> Multi.run(:user, fn _repo, _changes -> get_or_create_user(phone) end)
         |> Multi.run(:profile, fn _repo, %{user: user} -> ensure_profile(user) end)
         |> Multi.run(:session, fn _repo, %{user: user} -> create_session(user, context) end)
         |> Repo.transaction()
         |> case do
           {:ok, %{session: session, user: user}} ->
-            record_audit("otp_verified", %{user_id: user.id, phone: phone, ip_address: context.ip_address})
+            record_audit("otp_verified", %{
+              user_id: user.id,
+              phone: phone,
+              ip_address: context.ip_address
+            })
+
             {:ok, session}
 
           {:error, _step, _reason, _changes} ->
@@ -301,7 +356,9 @@ defmodule BotonBackend.Accounts do
 
   defp create_refresh_token(%User{} = user, context) do
     raw_token = random_token(32)
-    expires_at = DateTime.add(DateTime.utc_now(), auth_config(:refresh_token_ttl_seconds), :second)
+
+    expires_at =
+      DateTime.add(DateTime.utc_now(), auth_config(:refresh_token_ttl_seconds), :second)
 
     %RefreshToken{}
     |> RefreshToken.changeset(%{
@@ -324,13 +381,21 @@ defmodule BotonBackend.Accounts do
 
     phone_count =
       AuditLog
-      |> where([audit], audit.action == "otp_requested" and audit.phone == ^phone and audit.recorded_at >= ^recent_since)
+      |> where(
+        [audit],
+        audit.action == "otp_requested" and audit.phone == ^phone and
+          audit.recorded_at >= ^recent_since
+      )
       |> Repo.aggregate(:count, :id)
 
     ip_count =
       if is_binary(context.ip_address) do
         AuditLog
-        |> where([audit], audit.action == "otp_requested" and audit.ip_address == ^context.ip_address and audit.recorded_at >= ^recent_since)
+        |> where(
+          [audit],
+          audit.action == "otp_requested" and audit.ip_address == ^context.ip_address and
+            audit.recorded_at >= ^recent_since
+        )
         |> Repo.aggregate(:count, :id)
       else
         0
@@ -353,7 +418,8 @@ defmodule BotonBackend.Accounts do
         {:error, :otp_rate_limited, "Too many verification code requests"}
 
       latest_request &&
-          DateTime.diff(DateTime.utc_now(), latest_request.inserted_at, :second) < cooldown_seconds ->
+          DateTime.diff(DateTime.utc_now(), latest_request.inserted_at, :second) <
+            cooldown_seconds ->
         {:error, :otp_rate_limited, "Please wait before requesting another code"}
 
       true ->

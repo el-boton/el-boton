@@ -13,9 +13,17 @@ defmodule BotonBackendWeb.AlertController do
   def create(conn, %{"latitude" => latitude, "longitude" => longitude}) do
     user = conn.assigns.current_user
 
-    case Alerts.create_alert(user.id, latitude, longitude, ControllerHelpers.request_context(conn)) do
-      {:ok, alert} -> json(conn, alert)
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+    case Alerts.create_alert(
+           user.id,
+           latitude,
+           longitude,
+           ControllerHelpers.request_context(conn)
+         ) do
+      {:ok, alert} ->
+        json(conn, alert)
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -40,8 +48,11 @@ defmodule BotonBackendWeb.AlertController do
     user = conn.assigns.current_user
 
     case Alerts.expand_alert(user.id, alert_id) do
-      {:ok, alert} -> json(conn, alert)
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, alert} ->
+        json(conn, alert)
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -58,8 +69,11 @@ defmodule BotonBackendWeb.AlertController do
     user = conn.assigns.current_user
 
     case Alerts.respond_to_alert(user.id, alert_id, status) do
-      {:ok, _} -> send_resp(conn, :no_content, "")
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, _} ->
+        send_resp(conn, :no_content, "")
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -76,8 +90,11 @@ defmodule BotonBackendWeb.AlertController do
     user = conn.assigns.current_user
 
     case Alerts.create_message(user.id, alert_id, message) do
-      {:ok, created_message} -> json(conn, created_message)
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, created_message} ->
+        json(conn, created_message)
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 
@@ -85,8 +102,11 @@ defmodule BotonBackendWeb.AlertController do
     user = conn.assigns.current_user
 
     case fun.(user.id, alert_id) do
-      {:ok, alert} -> json(conn, alert)
-      {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
+      {:ok, alert} ->
+        json(conn, alert)
+
+      {:error, code, message} ->
+        ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end
   end
 end

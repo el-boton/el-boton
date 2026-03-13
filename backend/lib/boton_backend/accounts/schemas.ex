@@ -51,7 +51,14 @@ defmodule BotonBackend.Accounts.Profile do
 
   def changeset(profile, attrs) do
     profile
-    |> cast(attrs, [:display_name, :phone, :push_token, :location_geohash, :location, :location_updated_at])
+    |> cast(attrs, [
+      :display_name,
+      :phone,
+      :push_token,
+      :location_geohash,
+      :location,
+      :location_updated_at
+    ])
     |> validate_length(:display_name, min: 2, max: 50)
   end
 end
@@ -77,7 +84,16 @@ defmodule BotonBackend.Accounts.PhoneOtpChallenge do
 
   def changeset(challenge, attrs) do
     challenge
-    |> cast(attrs, [:phone, :code_hash, :code_salt, :expires_at, :consumed_at, :attempt_count, :ip_address, :user_agent])
+    |> cast(attrs, [
+      :phone,
+      :code_hash,
+      :code_salt,
+      :expires_at,
+      :consumed_at,
+      :attempt_count,
+      :ip_address,
+      :user_agent
+    ])
     |> validate_required([:phone, :code_hash, :code_salt, :expires_at])
   end
 end
@@ -105,7 +121,16 @@ defmodule BotonBackend.Accounts.RefreshToken do
 
   def changeset(refresh_token, attrs) do
     refresh_token
-    |> cast(attrs, [:user_id, :token_hash, :token_prefix, :expires_at, :revoked_at, :last_used_at, :ip_address, :user_agent])
+    |> cast(attrs, [
+      :user_id,
+      :token_hash,
+      :token_prefix,
+      :expires_at,
+      :revoked_at,
+      :last_used_at,
+      :ip_address,
+      :user_agent
+    ])
     |> validate_required([:user_id, :token_hash, :token_prefix, :expires_at])
     |> unique_constraint(:token_hash)
   end

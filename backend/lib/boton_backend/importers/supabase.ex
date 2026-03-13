@@ -127,7 +127,8 @@ defmodule BotonBackend.Importers.Supabase do
         %{
           id: required_string!(row, "id"),
           phone: phone,
-          inserted_at: datetime_or_now(fetch(row, "created_at") || fetch(row, "inserted_at"), now),
+          inserted_at:
+            datetime_or_now(fetch(row, "created_at") || fetch(row, "inserted_at"), now),
           updated_at:
             datetime_or_now(
               fetch(row, "updated_at") || fetch(row, "created_at") || fetch(row, "inserted_at"),
@@ -169,7 +170,14 @@ defmodule BotonBackend.Importers.Supabase do
         entries,
         on_conflict:
           {:replace,
-           [:display_name, :phone, :push_token, :location_geohash, :location_updated_at, :created_at]},
+           [
+             :display_name,
+             :phone,
+             :push_token,
+             :location_geohash,
+             :location_updated_at,
+             :created_at
+           ]},
         conflict_target: [:id]
       )
 
@@ -322,10 +330,10 @@ defmodule BotonBackend.Importers.Supabase do
   defp find_dataset_file(nil, _candidates), do: nil
 
   defp find_dataset_file(dir, candidates) do
-    (
-      for candidate <- candidates,
-          extension <- @extensions,
-          do: Path.join(dir, "#{candidate}#{extension}")
+    for(
+      candidate <- candidates,
+      extension <- @extensions,
+      do: Path.join(dir, "#{candidate}#{extension}")
     )
     |> Enum.find(&File.exists?/1)
   end
@@ -373,6 +381,7 @@ defmodule BotonBackend.Importers.Supabase do
 
   defp boolean_or_default(nil, default), do: default
   defp boolean_or_default(value, _default) when value in [true, false], do: value
+
   defp boolean_or_default(value, default) when is_binary(value) do
     case String.downcase(String.trim(value)) do
       "true" -> true
@@ -386,7 +395,9 @@ defmodule BotonBackend.Importers.Supabase do
   end
 
   defp datetime_or_now(nil, now), do: now
-  defp datetime_or_now(value, _now), do: datetime_or_nil(value) || raise("invalid datetime #{inspect(value)}")
+
+  defp datetime_or_now(value, _now),
+    do: datetime_or_nil(value) || raise("invalid datetime #{inspect(value)}")
 
   defp datetime_or_nil(nil), do: nil
   defp datetime_or_nil(%DateTime{} = value), do: ensure_usec(value)
@@ -410,6 +421,7 @@ defmodule BotonBackend.Importers.Supabase do
 
       match?({:ok, _naive}, NaiveDateTime.from_iso8601(trimmed)) ->
         {:ok, naive} = NaiveDateTime.from_iso8601(trimmed)
+
         naive
         |> ensure_usec()
         |> DateTime.from_naive!("Etc/UTC")
