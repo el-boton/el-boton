@@ -24,17 +24,31 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
 
     to = if channel == "whatsapp", do: "whatsapp:#{phone}", else: phone
 
+    form_params =
+      case channel do
+        "whatsapp" ->
+          [
+            To: to,
+            MessagingServiceSid: messaging_service_sid,
+            ContentSid: Keyword.fetch!(config, :whatsapp_content_sid),
+            ContentVariables: Jason.encode!(%{"1" => code})
+          ]
+
+        _ ->
+          [
+            To: to,
+            MessagingServiceSid: messaging_service_sid,
+            Body: "#{code} is your verification code. For your security, do not share this code."
+          ]
+      end
+
     response =
       Req.post!(
         "https://api.twilio.com/2010-04-01/Accounts/#{account_sid}/Messages.json",
         headers: [
           authorization: "Basic #{Base.encode64("#{account_sid}:#{auth_token}")}"
         ],
-        form: [
-          To: to,
-          MessagingServiceSid: messaging_service_sid,
-          Body: "#{code} is your verification code. For your security, do not share this code."
-        ]
+        form: form_params
       )
 
     if response.status in 200..299 do

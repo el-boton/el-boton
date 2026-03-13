@@ -49,9 +49,11 @@ if config_env() != :test do
 
   config :boton_backend, BotonBackend.Auth,
     [{:jwt_secret,
-      System.get_env("JWT_SIGNING_SECRET") || "dev-jwt-signing-secret-change-me"},
+      System.get_env("JWT_SIGNING_SECRET") ||
+        raise("environment variable JWT_SIGNING_SECRET is missing")},
      {:token_hash_secret,
-      System.get_env("TOKEN_HASH_SECRET") || "dev-token-hash-secret-change-me"}
+      System.get_env("TOKEN_HASH_SECRET") ||
+        raise("environment variable TOKEN_HASH_SECRET is missing")}
     ] ++ apple_review_config
 
   config :boton_backend, BotonBackendWeb.Endpoint,
@@ -66,7 +68,8 @@ case System.get_env("SMS_PROVIDER") do
       provider: BotonBackend.Notifications.TwilioSMSProvider,
       account_sid: optional_env.("TWILIO_ACCOUNT_SID"),
       auth_token: optional_env.("TWILIO_AUTH_TOKEN"),
-      messaging_service_sid: optional_env.("TWILIO_MESSAGING_SERVICE_SID")
+      messaging_service_sid: optional_env.("TWILIO_MESSAGING_SERVICE_SID"),
+      whatsapp_content_sid: optional_env.("TWILIO_WHATSAPP_CONTENT_SID")
 
   _ ->
     :ok
