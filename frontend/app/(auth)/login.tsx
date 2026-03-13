@@ -8,7 +8,7 @@ import {
   Spinner,
   styled,
 } from 'tamagui';
-import { Shield, ChevronRight, ArrowLeft } from '@tamagui/lucide-icons';
+import { Shield, ChevronRight, ArrowLeft, MessageCircle } from '@tamagui/lucide-icons';
 import { useTranslation } from 'react-i18next';
 import {
   requestOtp as requestOtpRequest,
@@ -122,6 +122,7 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState<Country>(countries[0]);
   const [otp, setOtp] = useState('');
+  const [channel, setChannel] = useState<'sms' | 'whatsapp'>('sms');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -135,15 +136,16 @@ export default function LoginScreen() {
     return digits;
   };
 
-  const sendOtp = async () => {
+  const sendOtp = async (via: 'sms' | 'whatsapp' = 'sms') => {
     const digits = phone.replace(/\D/g, '');
     const minLength = country.dial === '+1' ? 10 : 7;
     if (digits.length < minLength) { setError(t('auth.invalidPhone')); return; }
 
+    setChannel(via);
     setLoading(true);
     setError('');
     try {
-      await requestOtpRequest(`${country.dial}${digits}`);
+      await requestOtpRequest(`${country.dial}${digits}`, via);
       setStage('otp');
     } catch (error: any) {
       setError(error?.message || t('common.error'));
@@ -197,18 +199,25 @@ export default function LoginScreen() {
                 />
               </XStack>
 
-              <PrimaryButton loading={loading} onPress={sendOtp} marginTop="$5">
+              <PrimaryButton loading={loading} onPress={() => sendOtp('sms')} marginTop="$5">
                 <XStack alignItems="center" gap="$2">
                   <Text color="white" fontWeight="700" fontSize={15}>{t('auth.sendCode')}</Text>
                   <ChevronRight size={18} color="white" />
                 </XStack>
               </PrimaryButton>
+
+              <SecondaryButton loading={loading} onPress={() => sendOtp('whatsapp')}>
+                <XStack alignItems="center" gap="$2">
+                  <MessageCircle size={16} color="$textTertiary" />
+                  <Text color="$textTertiary" fontSize={14}>{t('auth.sendViaWhatsApp')}</Text>
+                </XStack>
+              </SecondaryButton>
             </YStack>
           ) : (
             <YStack animation="fast" enterStyle={{ opacity: 0, y: 10 }}>
               <FieldLabel>{t('auth.verificationCode')}</FieldLabel>
               <Text color="$textSecondary" fontSize={14} marginBottom="$4" textAlign="center">
-                {t('auth.enterCode', { phone: `${country.dial} ${phone}` })}
+                {t(channel === 'whatsapp' ? 'auth.enterCodeWhatsApp' : 'auth.enterCode', { phone: `${country.dial} ${phone}` })}
               </Text>
               <StyledInput
                 value={otp}

@@ -24,6 +24,8 @@
     "codePlaceholder": "000000",
     "verifyAndContinue": "Verificar y Continuar",
     "useDifferentNumber": "Usar otro numero",
+    "sendViaWhatsApp": "Enviar por WhatsApp",
+    "enterCodeWhatsApp": "Ingresa el codigo de 6 digitos enviado por WhatsApp a {{phone}}",
     "invalidPhone": "Por favor ingresa un numero de telefono valido",
     "invalidCode": "Por favor ingresa el codigo de 6 digitos"
   },

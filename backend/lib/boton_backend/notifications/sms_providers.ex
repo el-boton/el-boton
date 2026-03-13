@@ -3,8 +3,8 @@ defmodule BotonBackend.Notifications.ConsoleSMSProvider do
 
   require Logger
 
-  def deliver_otp(phone, code) do
-    Logger.warning("DEV OTP for #{phone}: #{code}")
+  def deliver_otp(phone, code, channel \\ "sms") do
+    Logger.warning("DEV OTP for #{phone} via #{channel}: #{code}")
     :ok
   end
 end
@@ -14,13 +14,15 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
 
   require Logger
 
-  def deliver_otp(phone, code) do
+  def deliver_otp(phone, code, channel \\ "sms") do
     config =
       Application.fetch_env!(:boton_backend, BotonBackend.Notifications.SMS)
 
     account_sid = Keyword.fetch!(config, :account_sid)
     auth_token = Keyword.fetch!(config, :auth_token)
-    from_number = Keyword.fetch!(config, :from_number)
+    messaging_service_sid = Keyword.fetch!(config, :messaging_service_sid)
+
+    to = if channel == "whatsapp", do: "whatsapp:#{phone}", else: phone
 
     response =
       Req.post!(
@@ -29,22 +31,22 @@ defmodule BotonBackend.Notifications.TwilioSMSProvider do
           authorization: "Basic #{Base.encode64("#{account_sid}:#{auth_token}")}"
         ],
         form: [
-          To: phone,
-          From: from_number,
+          To: to,
+          MessagingServiceSid: messaging_service_sid,
           Body: "Your El Boton verification code is #{code}"
         ]
       )
 
     if response.status in 200..299 do
-      Logger.info("Twilio SMS sent: to=#{phone} sid=#{response.body["sid"]} status=#{response.body["status"]}")
+      Logger.info("Twilio #{channel} sent: to=#{phone} sid=#{response.body["sid"]} status=#{response.body["status"]}")
       :ok
     else
-      Logger.error("Twilio SMS failed: status=#{response.status} body=#{inspect(response.body)}")
+      Logger.error("Twilio #{channel} failed: status=#{response.status} body=#{inspect(response.body)}")
       {:error, :twilio_delivery_failed}
     end
   rescue
     error ->
-      Logger.error("Twilio SMS exception: #{inspect(error)}")
+      Logger.error("Twilio #{channel} exception: #{inspect(error)}")
       {:error, :twilio_delivery_failed}
   end
 end

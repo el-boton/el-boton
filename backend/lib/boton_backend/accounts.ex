@@ -20,14 +20,14 @@ defmodule BotonBackend.Accounts do
 
   def get_profile(user_id), do: Repo.get(Profile, user_id)
 
-  def request_otp(phone, context) do
+  def request_otp(phone, context, channel \\ "sms") do
     normalized_phone = normalize_phone(phone)
 
     with :ok <- validate_e164(normalized_phone) do
       if apple_review_bypass?(normalized_phone) do
         {:ok, %{ok: true}}
       else
-        do_request_otp(normalized_phone, context)
+        do_request_otp(normalized_phone, context, channel)
       end
     end
   end
@@ -172,7 +172,7 @@ defmodule BotonBackend.Accounts do
 
   # -- OTP request/verify implementation --
 
-  defp do_request_otp(phone, context) do
+  defp do_request_otp(phone, context, channel) do
     with :ok <- ensure_otp_rate_limit(phone, context) do
       code = generate_otp_code()
       salt = random_token(16)
@@ -191,7 +191,7 @@ defmodule BotonBackend.Accounts do
 
       case Repo.insert(changeset) do
         {:ok, challenge} ->
-          case send_otp(phone, code) do
+          case send_otp(phone, code, channel) do
             :ok ->
               record_audit("otp_requested", %{phone: phone, ip_address: context.ip_address, metadata: %{challenge_id: challenge.id}})
               {:ok, %{ok: true}}
@@ -378,12 +378,12 @@ defmodule BotonBackend.Accounts do
     :ok
   end
 
-  defp send_otp(phone, code) do
+  defp send_otp(phone, code, channel) do
     provider =
       Application.fetch_env!(:boton_backend, BotonBackend.Notifications.SMS)
       |> Keyword.fetch!(:provider)
 
-    provider.deliver_otp(phone, code)
+    provider.deliver_otp(phone, code, channel)
   end
 
   defp validate_e164(phone) do

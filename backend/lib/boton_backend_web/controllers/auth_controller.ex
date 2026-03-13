@@ -5,8 +5,10 @@ defmodule BotonBackendWeb.AuthController do
   alias BotonBackendWeb.ControllerHelpers
   alias BotonBackendWeb.Serializers
 
-  def request(conn, %{"phone" => phone}) do
-    case Accounts.request_otp(phone, ControllerHelpers.request_context(conn)) do
+  def request(conn, %{"phone" => phone} = params) do
+    channel = Map.get(params, "channel", "sms")
+
+    case Accounts.request_otp(phone, ControllerHelpers.request_context(conn), channel) do
       {:ok, result} -> json(conn, result)
       {:error, code, message} -> ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end

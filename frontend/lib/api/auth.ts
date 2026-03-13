@@ -139,10 +139,10 @@ export function onAuthStateChange(listener: AuthListener) {
   };
 }
 
-export async function requestOtp(phone: string): Promise<void> {
+export async function requestOtp(phone: string, channel: 'sms' | 'whatsapp' = 'sms'): Promise<void> {
   await requestJson('/auth/otp/request', {
     method: 'POST',
-    body: { phone },
+    body: { phone, channel },
   });
 }
 
