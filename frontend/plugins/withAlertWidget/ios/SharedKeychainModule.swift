@@ -1,5 +1,6 @@
 import Foundation
 import React
+import WidgetKit
 
 @objc(SharedKeychainModule)
 class SharedKeychainModule: NSObject {
@@ -49,6 +50,11 @@ class SharedKeychainModule: NSObject {
             defaults.set(configData, forKey: SharedKeychainModule.configKey)
 
             defaults.synchronize()
+
+            if #available(iOS 14.0, *) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+
             resolve(true)
         } catch {
             reject("SYNC_ERROR", "Failed to sync credentials: \(error.localizedDescription)", error)
@@ -65,6 +71,10 @@ class SharedKeychainModule: NSObject {
         defaults.removeObject(forKey: SharedKeychainModule.tokenKey)
         defaults.removeObject(forKey: SharedKeychainModule.configKey)
         defaults.synchronize()
+
+        if #available(iOS 14.0, *) {
+            WidgetCenter.shared.reloadAllTimelines()
+        }
 
         resolve(true)
     }
