@@ -4,8 +4,7 @@ defmodule BotonBackend.Notifications do
   import Ecto.Query
 
   alias BotonBackend.Accounts.Profile
-  alias BotonBackend.Alerts.{Alert, PushDeliveryAttempt}
-  alias BotonBackend.Circles
+  alias BotonBackend.Alerts.{Alert, AlertRecipient, PushDeliveryAttempt}
   alias BotonBackend.Repo
   alias Ecto.Multi
 
@@ -28,9 +27,10 @@ defmodule BotonBackend.Notifications do
   end
 
   def recipient_user_ids(%Alert{} = alert) do
-    recipient_profiles(alert)
-    |> Enum.map(& &1.user_id)
-    |> Enum.uniq()
+    AlertRecipient
+    |> where([recipient], recipient.alert_id == ^alert.id)
+    |> select([recipient], recipient.user_id)
+    |> Repo.all()
   end
 
   def nearby_user_ids(%Alert{} = alert) do
@@ -49,9 +49,7 @@ defmodule BotonBackend.Notifications do
   end
 
   defp recipient_profiles(%Alert{} = alert) do
-    user_ids =
-      (Circles.sender_circle_member_ids(alert.sender_id) ++ nearby_user_ids(alert))
-      |> Enum.uniq()
+    user_ids = recipient_user_ids(alert)
 
     Profile
     |> where([profile], profile.id in ^user_ids)

@@ -35,6 +35,8 @@ defmodule BotonBackendWeb.CircleControllerTest do
 
     assert Enum.any?(members, &(&1["role"] == "owner" and &1["profile"]["display_name"] == "Owner"))
     assert Enum.any?(members, &(&1["role"] == "member" and &1["profile"]["display_name"] == "Member"))
+    refute Enum.any?(members, &Map.has_key?(&1["profile"], "phone"))
+    refute Enum.any?(members, &Map.has_key?(&1["profile"], "push_token"))
   end
 
   test "owners can remove members and delete the circle", %{conn: conn} do

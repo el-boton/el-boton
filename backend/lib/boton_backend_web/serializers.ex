@@ -73,7 +73,7 @@ defmodule BotonBackendWeb.Serializers do
       user_id: member.user_id,
       role: member.role,
       joined_at: member.joined_at,
-      profile: member.profile
+      profile: circle_member_profile(member.profile)
     }
   end
 
@@ -92,6 +92,15 @@ defmodule BotonBackendWeb.Serializers do
   defp sender_profile(%{responder_profile: profile}), do: display_profile(profile)
   defp sender_profile(%{profile: profile}), do: display_profile(profile)
   defp sender_profile(_), do: nil
+
+  defp circle_member_profile(nil), do: nil
+
+  defp circle_member_profile(profile) do
+    %{
+      id: profile.id,
+      display_name: profile.display_name
+    }
+  end
 
   defp display_profile(nil), do: nil
 

@@ -9,7 +9,7 @@ import {
   styled,
   Separator,
 } from 'tamagui';
-import { Users, Plus, UserPlus, Share2, ChevronRight, Crown, LogOut, Trash2, X, User, BellOff } from '@tamagui/lucide-icons';
+import { Users, Plus, UserPlus, Share2, ChevronRight, Crown, LogOut, Trash2, X, User } from '@tamagui/lucide-icons';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -197,7 +197,7 @@ export default function CirclesScreen() {
 
   const handleRemoveMember = async (member: CircleMemberWithProfile) => {
     if (!selectedCircle || !user) return;
-    const memberName = member.profile.display_name || member.profile.phone || t('circles.unknownMember');
+    const memberName = member.profile.display_name || t('circles.unknownMember');
     Alert.alert(t('circles.removeMember'), t('circles.removeConfirm', { name: memberName }), [
       { text: t('common.cancel'), style: 'cancel' },
       {
@@ -390,7 +390,7 @@ export default function CirclesScreen() {
               const isCurrentUser = member.user_id === user?.id;
               const memberIsOwner = member.role === 'owner';
               const canRemove = isOwner && !isCurrentUser && !memberIsOwner;
-              const memberName = member.profile.display_name || member.profile.phone || t('circles.unknownMember');
+              const memberName = member.profile.display_name || t('circles.unknownMember');
               const letter = (memberName || '?')[0].toUpperCase();
 
               return (
@@ -408,12 +408,6 @@ export default function CirclesScreen() {
                         <Crown size={12} color="$warning" />
                         <Text fontSize={11} color="$warning" fontWeight="600">{t('circles.owner')}</Text>
                       </RoleBadge>
-                    )}
-                    {!member.profile.push_token && (
-                      <XStack alignItems="center" gap="$1" marginTop="$1">
-                        <BellOff size={12} color="$textTertiary" />
-                        <Text fontSize={11} color="$textTertiary">{t('circles.notificationsOff')}</Text>
-                      </XStack>
                     )}
                   </YStack>
                   {canRemove && (

@@ -3,7 +3,7 @@ import { Circle, CircleMember, Profile } from '@/lib/types';
 import { authenticatedRequest } from './auth';
 
 export type CircleMemberWithProfile = CircleMember & {
-  profile: Pick<Profile, 'id' | 'display_name' | 'phone' | 'push_token'>;
+  profile: Pick<Profile, 'id' | 'display_name'>;
 };
 
 export type CircleWithRole = Circle & {

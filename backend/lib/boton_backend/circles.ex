@@ -44,9 +44,7 @@ defmodule BotonBackend.Circles do
         joined_at: member.joined_at,
         profile: %{
           id: profile.id,
-          display_name: profile.display_name,
-          phone: profile.phone,
-          push_token: profile.push_token
+          display_name: profile.display_name
         }
       })
       |> Repo.all()

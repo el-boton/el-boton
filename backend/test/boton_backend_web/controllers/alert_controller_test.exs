@@ -1,6 +1,7 @@
 defmodule BotonBackendWeb.AlertControllerTest do
   use BotonBackendWeb.ConnCase, async: true
 
+  alias BotonBackend.Accounts
   alias BotonBackend.Alerts.PushDeliveryAttempt
 
   test "circle members can create, respond to, message, and resolve alerts", %{conn: conn} do
@@ -122,5 +123,44 @@ defmodule BotonBackendWeb.AlertControllerTest do
       |> get(~p"/alerts/history")
 
     assert Enum.any?(json_response(expanded_history_conn, 200), &(&1["id"] == alert_id))
+  end
+
+  test "moving near an alert after expansion does not grant retroactive access", %{conn: conn} do
+    sender = user_fixture(%{display_name: "Sender"})
+    distant_user = user_fixture(%{
+      display_name: "Distant User",
+      latitude: 40.7128,
+      longitude: -74.0060
+    })
+
+    create_alert_conn =
+      conn
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts", %{latitude: 37.7749, longitude: -122.4194})
+
+    %{"id" => alert_id} = json_response(create_alert_conn, 200)
+
+    expand_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts/#{alert_id}/expand", %{})
+
+    assert %{"id" => ^alert_id, "expand_to_nearby" => true} = json_response(expand_conn, 200)
+
+    initial_history_conn =
+      build_conn()
+      |> auth_conn(distant_user.session)
+      |> get(~p"/alerts/history")
+
+    assert json_response(initial_history_conn, 200) == []
+
+    {:ok, _profile} = Accounts.update_location(distant_user.user.id, 37.7750, -122.4195)
+
+    moved_history_conn =
+      build_conn()
+      |> auth_conn(distant_user.session)
+      |> get(~p"/alerts/history")
+
+    assert json_response(moved_history_conn, 200) == []
   end
 end

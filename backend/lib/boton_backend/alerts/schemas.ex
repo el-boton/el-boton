@@ -50,6 +50,28 @@ defmodule BotonBackend.Alerts.AlertResponse do
   end
 end
 
+defmodule BotonBackend.Alerts.AlertRecipient do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key false
+  @foreign_key_type :binary_id
+
+  schema "alert_recipients" do
+    field :reason, :string
+    field :granted_at, :utc_datetime_usec
+
+    belongs_to :alert, BotonBackend.Alerts.Alert, primary_key: true
+    belongs_to :user, BotonBackend.Accounts.User, primary_key: true
+  end
+
+  def changeset(recipient, attrs) do
+    recipient
+    |> cast(attrs, [:alert_id, :user_id, :reason, :granted_at])
+    |> validate_required([:alert_id, :user_id, :reason])
+  end
+end
+
 defmodule BotonBackend.Alerts.AlertMessage do
   use Ecto.Schema
   import Ecto.Changeset

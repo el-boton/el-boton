@@ -83,7 +83,7 @@ defmodule BotonBackend.Fixtures do
   end
 
   def extract_otp_code!(log, phone) do
-    regex = ~r/DEV OTP for #{Regex.escape(phone)}: (?<code>\d{6})/
+    regex = ~r/DEV OTP for #{Regex.escape(phone)} via \w+: (?<code>\d{6})/
 
     case Regex.named_captures(regex, log) do
       %{"code" => code} -> code

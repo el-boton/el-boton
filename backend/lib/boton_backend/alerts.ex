@@ -4,7 +4,8 @@ defmodule BotonBackend.Alerts do
   import Ecto.Query
 
   alias BotonBackend.Accounts
-  alias BotonBackend.Alerts.{Alert, AlertMessage, AlertResponse}
+  alias BotonBackend.Alerts.{Alert, AlertMessage, AlertRecipient, AlertResponse}
+  alias BotonBackend.Circles
   alias BotonBackend.Notifications
   alias BotonBackend.Repo
   alias BotonBackend.Utils.Geohash
@@ -17,6 +18,8 @@ defmodule BotonBackend.Alerts do
 
   def create_alert(user_id, latitude, longitude, context) do
     with :ok <- ensure_alert_rate_limit(user_id, context) do
+      circle_recipient_ids = Circles.sender_circle_member_ids(user_id)
+
       attrs = %{
         sender_id: user_id,
         latitude: latitude,
@@ -29,6 +32,9 @@ defmodule BotonBackend.Alerts do
 
       Multi.new()
       |> Multi.insert(:alert, Alert.changeset(%Alert{}, attrs))
+      |> Multi.run(:circle_recipients, fn repo, %{alert: alert} ->
+        insert_alert_recipients(repo, alert.id, circle_recipient_ids, "circle")
+      end)
       |> Notifications.put_alert_fanout_job(:fanout_job, fn %{alert: alert} ->
         BotonBackend.Notifications.AlertFanoutWorker.new(%{"alert_id" => alert.id})
       end)
@@ -41,8 +47,11 @@ defmodule BotonBackend.Alerts do
           broadcast_user_alerts(alert)
           {:ok, Serializers.alert(alert)}
 
-        {:error, _step, changeset, _changes} ->
+        {:error, _step, %Ecto.Changeset{} = changeset, _changes} ->
           {:error, :validation_failed, translate_error(changeset)}
+
+        {:error, _step, _reason, _changes} ->
+          {:error, :alert_create_failed, "Failed to create alert"}
       end
     end
   end
@@ -74,19 +83,30 @@ defmodule BotonBackend.Alerts do
   def expand_alert(user_id, alert_id) do
     with %Alert{} = alert <- Repo.get(Alert, alert_id),
          true <- alert.sender_id == user_id do
-      alert
-      |> Ecto.Changeset.change(expand_to_nearby: true)
-      |> Repo.update()
+      Multi.new()
+      |> Multi.update(:alert, Ecto.Changeset.change(alert, expand_to_nearby: true))
+      |> Multi.run(:nearby_recipients, fn repo, %{alert: updated_alert} ->
+        insert_alert_recipients(
+          repo,
+          updated_alert.id,
+          Notifications.nearby_user_ids(updated_alert),
+          "nearby"
+        )
+      end)
+      |> Repo.transaction()
       |> case do
-        {:ok, updated_alert} ->
+        {:ok, %{alert: updated_alert}} ->
           _job = Notifications.enqueue_alert_fanout(updated_alert.id)
           updated_alert = Repo.preload(updated_alert, sender: :profile)
           broadcast_alert_update(updated_alert)
           broadcast_user_alerts(updated_alert)
           {:ok, Serializers.alert(updated_alert)}
 
-        {:error, changeset} ->
+        {:error, _step, %Ecto.Changeset{} = changeset, _changes} ->
           {:error, :validation_failed, translate_error(changeset)}
+
+        {:error, _step, _reason, _changes} ->
+          {:error, :alert_expand_failed, "Failed to expand alert"}
       end
     else
       false -> {:error, :not_found, "Alert not found"}
@@ -210,35 +230,6 @@ defmodule BotonBackend.Alerts do
   end
 
   defp accessible_alerts_query(user_id) do
-    nearby_radius = auth_config(:nearby_radius_meters)
-    profile = Accounts.get_profile(user_id)
-
-    nearby_dynamic =
-      if profile && profile.location do
-        dynamic([alert], alert.expand_to_nearby and fragment("ST_DWithin(?, ?, ?)", alert.location, ^profile.location, ^nearby_radius))
-      else
-        dynamic(false)
-      end
-
-    shared_circle_dynamic =
-      dynamic(
-        [alert],
-        fragment(
-          """
-          EXISTS (
-            SELECT 1
-            FROM circle_members sender_member
-            JOIN circle_members viewer_member
-              ON sender_member.circle_id = viewer_member.circle_id
-            WHERE sender_member.user_id = ?
-              AND viewer_member.user_id = ?
-          )
-          """,
-          alert.sender_id,
-          type(^user_id, :binary_id)
-        )
-      )
-
     responded_dynamic =
       dynamic(
         [alert],
@@ -249,13 +240,22 @@ defmodule BotonBackend.Alerts do
         )
       )
 
+    granted_dynamic =
+      dynamic(
+        [alert],
+        fragment(
+          "EXISTS (SELECT 1 FROM alert_recipients recipients WHERE recipients.alert_id = ? AND recipients.user_id = ?)",
+          alert.id,
+          type(^user_id, :binary_id)
+        )
+      )
+
     visibility_dynamic =
       dynamic(
         [alert],
         alert.sender_id == ^user_id or
           ^responded_dynamic or
-          ^shared_circle_dynamic or
-          ^nearby_dynamic
+          ^granted_dynamic
       )
 
     from(alert in Alert,
@@ -315,16 +315,37 @@ defmodule BotonBackend.Alerts do
     |> Repo.all()
   end
 
+  defp insert_alert_recipients(_repo, _alert_id, [], _reason), do: {:ok, 0}
+
+  defp insert_alert_recipients(repo, alert_id, recipient_ids, reason) do
+    granted_at = DateTime.utc_now()
+
+    entries =
+      recipient_ids
+      |> Enum.uniq()
+      |> Enum.map(fn user_id ->
+        %{
+          alert_id: alert_id,
+          user_id: user_id,
+          reason: reason,
+          granted_at: granted_at
+        }
+      end)
+
+    {count, _rows} =
+      repo.insert_all(AlertRecipient, entries,
+        on_conflict: :nothing,
+        conflict_target: [:alert_id, :user_id]
+      )
+
+    {:ok, count}
+  end
+
   defp translate_error(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {message, _opts} -> message end)
     |> Enum.flat_map(fn {_field, messages} -> messages end)
     |> List.first()
     |> Kernel.||("Validation failed")
-  end
-
-  defp auth_config(key) do
-    Application.fetch_env!(:boton_backend, BotonBackend.Auth)
-    |> Keyword.fetch!(key)
   end
 
   defp point(longitude, latitude) do
