@@ -6,6 +6,7 @@ import {
   listCircleMembers,
   listCircles,
   removeCircleMember,
+  sendTestAlert as sendTestAlertRequest,
 } from '@/lib/api/circles';
 import {
   CircleMemberWithProfile,
@@ -26,6 +27,8 @@ function mapCircleError(error: unknown): string {
         return 'cannotRemoveSelf';
       case 'already_member':
         return 'alreadyMember';
+      case 'test_alert_rate_limited':
+        return 'testAlertRateLimit';
       default:
         return error.code;
     }
@@ -109,6 +112,17 @@ export async function deleteCircle(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     await deleteCircleRequest(circleId);
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: mapCircleError(error) };
+  }
+}
+
+export async function sendTestAlert(
+  circleId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    await sendTestAlertRequest(circleId);
     return { success: true };
   } catch (error) {
     return { success: false, error: mapCircleError(error) };

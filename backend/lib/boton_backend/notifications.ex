@@ -3,14 +3,17 @@ defmodule BotonBackend.Notifications do
 
   import Ecto.Query
 
-  alias BotonBackend.Accounts.Profile
+  alias BotonBackend.Accounts
+  alias BotonBackend.Accounts.{AuditLog, Profile, User}
   alias BotonBackend.Alerts.{Alert, AlertRecipient, PushDeliveryAttempt}
+  alias BotonBackend.Circles.{Circle, CircleMember}
   alias BotonBackend.Repo
   alias Ecto.Multi
   alias Req.Response
 
   @expo_max_messages_per_request 100
   @terminal_delivery_statuses ["sent", "skipped"]
+  @test_alert_rate_limit_window_seconds 60
 
   def put_alert_fanout_job(%Multi{} = multi, multi_name, changeset_or_fun) do
     Oban.insert(multi, multi_name, changeset_or_fun)
@@ -69,6 +72,30 @@ defmodule BotonBackend.Notifications do
     end
   end
 
+  def send_test_alert(circle_id, %User{} = sender) do
+    with :ok <- ensure_test_alert_rate_limit(sender.id),
+         %Circle{name: circle_name} <- Repo.get(Circle, circle_id) do
+      recipients = test_alert_recipient_profiles(circle_id, sender.id)
+      sender_name = test_alert_sender_name(sender)
+
+      with :ok <- deliver_test_alerts(circle_id, circle_name, sender_name, recipients) do
+        Accounts.record_audit("test_alert_sent", %{
+          user_id: sender.id,
+          phone: sender.phone,
+          metadata: %{
+            circle_id: circle_id,
+            recipient_count: length(recipients)
+          }
+        })
+
+        :ok
+      end
+    else
+      nil -> {:error, :not_found, "Circle not found"}
+      {:error, _code, _message} = error -> error
+    end
+  end
+
   defp recipient_profiles(%Alert{} = alert, recipient_ids) do
     user_ids =
       case recipient_ids do
@@ -112,6 +139,78 @@ defmodule BotonBackend.Notifications do
       |> insert_delivery_attempts()
 
       {:error, :push_delivery_failed}
+  end
+
+  defp ensure_test_alert_rate_limit(user_id) do
+    recent_since =
+      DateTime.add(DateTime.utc_now(), -@test_alert_rate_limit_window_seconds, :second)
+
+    recent_count =
+      AuditLog
+      |> where(
+        [audit],
+        audit.action == "test_alert_sent" and audit.user_id == ^user_id and
+          audit.recorded_at >= ^recent_since
+      )
+      |> Repo.aggregate(:count, :id)
+
+    if recent_count > 0 do
+      {:error, :test_alert_rate_limited, "Please wait before sending another test alert"}
+    else
+      :ok
+    end
+  end
+
+  defp test_alert_recipient_profiles(circle_id, sender_id) do
+    CircleMember
+    |> where([member], member.circle_id == ^circle_id and member.user_id != ^sender_id)
+    |> join(:inner, [member], profile in Profile, on: profile.id == member.user_id)
+    |> where([_member, profile], not is_nil(profile.push_token))
+    |> select([member, profile], %{user_id: member.user_id, push_token: profile.push_token})
+    |> Repo.all()
+  end
+
+  defp test_alert_sender_name(%User{} = sender) do
+    case Repo.get(Profile, sender.id) do
+      %Profile{display_name: display_name} when is_binary(display_name) and display_name != "" ->
+        display_name
+
+      _ ->
+        sender.phone || "Someone"
+    end
+  end
+
+  defp deliver_test_alerts(_circle_id, _circle_name, _sender_name, []), do: :ok
+
+  defp deliver_test_alerts(circle_id, circle_name, sender_name, recipients) do
+    config = Application.fetch_env!(:boton_backend, BotonBackend.Notifications.ExpoClient)
+
+    if Keyword.get(config, :enabled, true) do
+      recipients
+      |> Enum.chunk_every(@expo_max_messages_per_request)
+      |> Enum.reduce_while(:ok, fn chunk, :ok ->
+        messages =
+          Enum.map(chunk, &test_alert_message(circle_id, circle_name, sender_name, &1))
+
+        case Req.post(Keyword.fetch!(config, :endpoint),
+               json: messages,
+               headers: expo_headers(config),
+               retry: false
+             ) do
+          {:ok, %Response{status: status}} when status in 200..299 ->
+            {:cont, :ok}
+
+          {:ok, %Response{status: status}} ->
+            {:halt,
+             {:error, :push_delivery_failed, "Expo push request failed with status #{status}"}}
+
+          {:error, error} ->
+            {:halt, {:error, :push_delivery_failed, Exception.message(error)}}
+        end
+      end)
+    else
+      :ok
+    end
   end
 
   defp deliver_chunk(config, alert, sender_name, recipients) do
@@ -192,6 +291,21 @@ defmodule BotonBackend.Notifications do
         type: "emergency",
         latitude: alert.latitude,
         longitude: alert.longitude
+      }
+    }
+  end
+
+  defp test_alert_message(circle_id, circle_name, sender_name, recipient) do
+    %{
+      to: recipient.push_token,
+      sound: "default",
+      title: "Test Alert",
+      body: "#{sender_name} sent a test alert in #{circle_name}",
+      priority: "normal",
+      channelId: "test_alerts",
+      data: %{
+        type: "test_alert",
+        circleId: circle_id
       }
     }
   end

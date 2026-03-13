@@ -37,6 +37,12 @@ export async function listCircleMembers(
   );
 }
 
+export async function sendTestAlert(circleId: string): Promise<void> {
+  await authenticatedRequest<void>(`/circles/${circleId}/test_alert`, {
+    method: 'POST',
+  });
+}
+
 export async function leaveCircle(circleId: string): Promise<void> {
   await authenticatedRequest<void>(`/circles/${circleId}/members/me`, {
     method: 'DELETE',

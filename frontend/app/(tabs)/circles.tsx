@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Share, Alert, View, StyleSheet, Pressable, RefreshControl, ScrollView as RNScrollView } from 'react-native';
 import {
   YStack,
@@ -22,6 +22,7 @@ import {
   leaveCircle,
   removeMember,
   deleteCircle,
+  sendTestAlert,
 } from '@/lib/circles';
 import { ScreenContainer, ScreenHeader, ScreenTitle, ScreenSubtitle, SectionLabel } from '@/components/ScreenLayout';
 import { EmptyState } from '@/components/EmptyState';
@@ -128,6 +129,16 @@ export default function CirclesScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [sendingTestAlert, setSendingTestAlert] = useState(false);
+  const [testAlertSent, setTestAlertSent] = useState(false);
+  const testAlertResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearTestAlertReset = useCallback(() => {
+    if (testAlertResetRef.current) {
+      clearTimeout(testAlertResetRef.current);
+      testAlertResetRef.current = null;
+    }
+  }, []);
 
   const fetchCircles = useCallback(async () => {
     if (!user) return;
@@ -138,6 +149,20 @@ export default function CirclesScreen() {
   }, [user]);
 
   useEffect(() => { fetchCircles(); }, [fetchCircles]);
+
+  useEffect(() => {
+    return () => {
+      clearTestAlertReset();
+    };
+  }, [clearTestAlertReset]);
+
+  useEffect(() => {
+    if (!showDetail) {
+      clearTestAlertReset();
+      setSendingTestAlert(false);
+      setTestAlertSent(false);
+    }
+  }, [clearTestAlertReset, showDetail]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -224,6 +249,34 @@ export default function CirclesScreen() {
         },
       },
     ]);
+  };
+
+  const handleSendTestAlert = async () => {
+    if (!selectedCircle) return;
+
+    clearTestAlertReset();
+    setSendingTestAlert(true);
+    setTestAlertSent(false);
+
+    const result = await sendTestAlert(selectedCircle.id);
+
+    setSendingTestAlert(false);
+
+    if (result.success) {
+      setTestAlertSent(true);
+      testAlertResetRef.current = setTimeout(() => {
+        setTestAlertSent(false);
+        testAlertResetRef.current = null;
+      }, 2000);
+      return;
+    }
+
+    if (result.error === 'testAlertRateLimit') {
+      Alert.alert(t('common.error'), t('circles.testAlertRateLimit'));
+      return;
+    }
+
+    Alert.alert(t('common.error'), result.error || t('common.error'));
   };
 
   const isOwner = selectedCircle?.role === 'owner';
@@ -422,6 +475,25 @@ export default function CirclesScreen() {
         </RNScrollView>
 
         <YStack paddingTop="$4" gap="$3" borderTopWidth={1} borderTopColor="$borderSubtle">
+          <Button
+            height={48}
+            backgroundColor="$bgCard"
+            borderRadius="$3"
+            borderWidth={1}
+            borderColor="$borderSubtle"
+            onPress={handleSendTestAlert}
+            disabled={sendingTestAlert}
+            opacity={sendingTestAlert ? 0.7 : 1}
+          >
+            <Text color="$textSecondary" fontWeight="600" marginLeft="$2">
+              {sendingTestAlert
+                ? t('common.loading')
+                : testAlertSent
+                  ? t('circles.testAlertSent')
+                  : t('circles.sendTestAlert')}
+            </Text>
+          </Button>
+
           {!isOwner ? (
             <Button height={48} backgroundColor="$bgCard" borderRadius="$3" borderWidth={1} borderColor="$signalBorder" onPress={handleLeaveCircle}>
               <LogOut size={18} color="$signal" />

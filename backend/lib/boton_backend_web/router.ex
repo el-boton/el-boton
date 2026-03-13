@@ -8,7 +8,12 @@ defmodule BotonBackendWeb.Router do
 
   pipeline :auth_api do
     plug :accepts, ["json"]
-    plug BotonBackendWeb.Plugs.RateLimit, limit: 10, period_ms: 60_000, key_prefix: "auth", global_limit: 10
+
+    plug BotonBackendWeb.Plugs.RateLimit,
+      limit: 10,
+      period_ms: 60_000,
+      key_prefix: "auth",
+      global_limit: 10
   end
 
   pipeline :authenticated_api do
@@ -38,6 +43,7 @@ defmodule BotonBackendWeb.Router do
     post "/circles", CircleController, :create
     post "/circles/join", CircleController, :join
     get "/circles/:id/members", CircleController, :members
+    post "/circles/:id/test_alert", CircleController, :test_alert
     delete "/circles/:id/members/me", CircleController, :leave
     delete "/circles/:id/members/:user_id", CircleController, :remove_member
     delete "/circles/:id", CircleController, :delete

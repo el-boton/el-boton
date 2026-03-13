@@ -210,7 +210,7 @@ defmodule BotonBackend.Circles do
     |> Repo.exists?()
   end
 
-  defp ensure_member(circle_id, user_id) do
+  def ensure_member(circle_id, user_id) do
     if Repo.get_by(CircleMember, circle_id: circle_id, user_id: user_id) do
       :ok
     else

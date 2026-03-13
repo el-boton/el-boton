@@ -54,6 +54,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
       bypassDnd: true,
       lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
     });
+
+    await Notifications.setNotificationChannelAsync('test_alerts', {
+      name: 'Test Alerts',
+      importance: Notifications.AndroidImportance.DEFAULT,
+      sound: null,
+      bypassDnd: false,
+    });
   }
 
   // Get the push token
