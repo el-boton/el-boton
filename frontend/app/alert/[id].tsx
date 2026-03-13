@@ -8,6 +8,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Linking,
   Pressable,
   Dimensions,
 } from 'react-native';
@@ -92,6 +93,17 @@ export default function AlertScreen() {
   const scrollRef = useRef<any>(null);
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
+  const refetchAll = useCallback(async () => {
+    const [a, r, m] = await Promise.all([
+      getAlertById(id!),
+      getResponses(id!),
+      getMessages(id!),
+    ]);
+    if (a) setAlert(a);
+    if (r) setResponses(r);
+    if (m.length) setMessages(m);
+  }, [id]);
+
   useEffect(() => {
     fetchAlert();
     const alertSub = subscribeToAlert(id!, setAlert);
@@ -102,10 +114,15 @@ export default function AlertScreen() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
       }
     });
+
+    // Poll as fallback — channel broadcasts aren't reliably reaching the client
+    const poll = setInterval(refetchAll, 5000);
+
     return () => {
       alertSub.unsubscribe();
       responseSub.unsubscribe();
       messageSub.unsubscribe();
+      clearInterval(poll);
     };
   }, [id]);
 
@@ -151,6 +168,8 @@ export default function AlertScreen() {
 
   const handleRespond = async (status: 'acknowledged' | 'en_route' | 'arrived') => {
     await respondToAlert(id!, status);
+    const r = await getResponses(id!);
+    if (r) setResponses(r);
   };
 
   const handleSendMessage = async () => {
@@ -163,17 +182,15 @@ export default function AlertScreen() {
   };
 
   const openMaps = useCallback(() => {
-    if (!alert) return;
+    if (!alert?.latitude || !alert?.longitude) return;
     const { latitude, longitude } = alert;
     const url = Platform.select({
-      ios: `maps:0,0?q=Emergency@${latitude},${longitude}`,
+      ios: `maps:?daddr=${latitude},${longitude}`,
       android: `geo:${latitude},${longitude}?q=${latitude},${longitude}(Emergency)`,
     });
     if (url) {
-      import('react-native').then(({ Linking }) => {
-        Linking.openURL(url).catch(() => {
-          Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
-        });
+      Linking.openURL(url).catch(() => {
+        Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`);
       });
     }
   }, [alert]);
