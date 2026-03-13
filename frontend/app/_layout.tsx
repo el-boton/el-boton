@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useColorScheme, Alert, Platform, NativeModules, AppState } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { useFonts } from 'expo-font';
 import { Stack, useRouter, useSegments } from 'expo-router';
@@ -15,6 +16,8 @@ import { loadSavedLanguage } from '@/lib/i18n';
 import { config } from '../tamagui.config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 
+const LOCATION_SKIPPED_KEY = 'boton.onboarding.location_skipped';
+
 const { SharedKeychainModule } = NativeModules;
 
 export { ErrorBoundary } from 'expo-router';
@@ -27,6 +30,7 @@ function RootLayoutNav() {
   const router = useRouter();
   const [permissionsChecked, setPermissionsChecked] = useState(false);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
+  const [locationSkipped, setLocationSkipped] = useState(false);
 
   // Check permissions status (don't request, just check)
   // Re-check when segments change (user navigated) to catch newly granted permissions
@@ -34,8 +38,12 @@ function RootLayoutNav() {
     if (loading || profileLoading) return;
 
     (async () => {
-      const locStatus = await Location.getForegroundPermissionsAsync();
+      const [locStatus, skipped] = await Promise.all([
+        Location.getForegroundPermissionsAsync(),
+        AsyncStorage.getItem(LOCATION_SKIPPED_KEY),
+      ]);
       setHasLocationPermission(locStatus.status === 'granted');
+      setLocationSkipped(skipped === 'true');
       setPermissionsChecked(true);
     })();
   }, [loading, profileLoading, segments]);
@@ -156,7 +164,7 @@ function RootLayoutNav() {
     // Determine which onboarding step is needed (if any)
     // Note: notifications are optional (App Store Guideline 4.5.4) — not gated here
     const needsDisplayName = !profile?.display_name;
-    const needsLocation = !hasLocationPermission;
+    const needsLocation = !hasLocationPermission && !locationSkipped;
     const onboardingComplete = !needsDisplayName && !needsLocation;
 
     if (!user && !inAuthGroup) {

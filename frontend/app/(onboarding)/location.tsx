@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Alert, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   YStack,
   XStack,
@@ -59,10 +60,15 @@ export default function LocationScreen() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
+  const skipLocation = async () => {
+    await AsyncStorage.setItem('boton.onboarding.location_skipped', 'true');
+    router.push('/(onboarding)/notifications');
+  };
+
   const handleSkip = () => {
     Alert.alert(t('onboarding.skipLocationTitle'), t('onboarding.skipLocationMessage'), [
       { text: t('onboarding.enableLocation'), onPress: () => requestLocationPermission() },
-      { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: () => router.push('/(onboarding)/notifications') },
+      { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: skipLocation },
     ]);
   };
 
@@ -84,13 +90,13 @@ export default function LocationScreen() {
         Alert.alert(t('onboarding.locationRequired'), t('onboarding.locationRequiredMessage'), [
           { text: t('onboarding.openSettings'), onPress: () => Linking.openSettings() },
           { text: t('onboarding.tryAgain'), onPress: () => requestLocationPermission() },
-          { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: () => router.push('/(onboarding)/notifications') },
+          { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: skipLocation },
         ]);
       }
     } catch (err) {
       Alert.alert(t('onboarding.locationRequired'), t('onboarding.locationRequiredMessage'), [
         { text: t('onboarding.tryAgain'), onPress: () => requestLocationPermission() },
-        { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: () => router.push('/(onboarding)/notifications') },
+        { text: t('onboarding.skipAnyway'), style: 'destructive', onPress: skipLocation },
       ]);
     } finally {
       setLoading(false);

@@ -3,7 +3,7 @@ import { Alert, Linking } from 'react-native';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
-import { YStack, XStack, Text, Button, styled } from 'tamagui';
+import { YStack, XStack, Text, styled } from 'tamagui';
 import { Users, Shield, MapPin, Bell } from '@tamagui/lucide-icons';
 import { useTranslation } from 'react-i18next';
 import { BigRedButton } from '@/components/BigRedButton';
@@ -135,42 +135,42 @@ export default function HomeScreen() {
       {(!locationEnabled || !notificationsEnabled) && (
         <YStack paddingTop="$14" paddingHorizontal="$6" gap="$2">
           {!locationEnabled && (
-            <Button
+            <XStack
               backgroundColor="$signalSubtle"
               borderWidth={1}
               borderColor="$signalBorder"
               borderRadius="$3"
               paddingVertical="$3"
               paddingHorizontal="$4"
+              alignItems="center"
+              gap="$2.5"
               onPress={() => Linking.openSettings()}
               pressStyle={{ opacity: 0.8 }}
             >
-              <XStack alignItems="center" gap="$2.5" flex={1}>
-                <MapPin size={16} color="$signal" />
-                <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
-                  {t('home.locationDisabled')}
-                </Text>
-              </XStack>
-            </Button>
+              <MapPin size={16} color="$signal" />
+              <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
+                {t('home.locationDisabled')}
+              </Text>
+            </XStack>
           )}
           {!notificationsEnabled && (
-            <Button
+            <XStack
               backgroundColor="$signalSubtle"
               borderWidth={1}
               borderColor="$signalBorder"
               borderRadius="$3"
               paddingVertical="$3"
               paddingHorizontal="$4"
+              alignItems="center"
+              gap="$2.5"
               onPress={() => Linking.openSettings()}
               pressStyle={{ opacity: 0.8 }}
             >
-              <XStack alignItems="center" gap="$2.5" flex={1}>
-                <Bell size={16} color="$signal" />
-                <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
-                  {t('home.notificationsDisabled')}
-                </Text>
-              </XStack>
-            </Button>
+              <Bell size={16} color="$signal" />
+              <Text color="$signal" fontSize={13} fontWeight="600" flex={1}>
+                {t('home.notificationsDisabled')}
+              </Text>
+            </XStack>
           )}
         </YStack>
       )}
