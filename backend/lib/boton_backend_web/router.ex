@@ -8,7 +8,7 @@ defmodule BotonBackendWeb.Router do
 
   pipeline :auth_api do
     plug :accepts, ["json"]
-    plug BotonBackendWeb.Plugs.RateLimit, limit: 10, period_ms: 60_000, key_prefix: "auth"
+    plug BotonBackendWeb.Plugs.RateLimit, limit: 10, period_ms: 60_000, key_prefix: "auth", global_limit: 10
   end
 
   pipeline :authenticated_api do
