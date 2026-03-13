@@ -66,7 +66,6 @@ case System.get_env("SMS_PROVIDER") do
       provider: BotonBackend.Notifications.TwilioSMSProvider,
       account_sid: optional_env.("TWILIO_ACCOUNT_SID"),
       auth_token: optional_env.("TWILIO_AUTH_TOKEN"),
-      from_number: optional_env.("TWILIO_FROM_NUMBER"),
       messaging_service_sid: optional_env.("TWILIO_MESSAGING_SERVICE_SID")
 
   _ ->
@@ -84,7 +83,7 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :boton_backend, BotonBackend.Repo,
-    ssl: System.get_env("DATABASE_SSL", "true") != "false",
+    ssl: System.get_env("DATABASE_SSL") == "true",
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     types: BotonBackend.PostgresTypes,
