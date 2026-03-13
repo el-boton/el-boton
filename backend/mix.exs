@@ -54,7 +54,8 @@ defmodule BotonBackend.MixProject do
       {:req, "~> 0.5"},
       {:nimble_csv, "~> 1.3"},
       {:dns_cluster, "~> 0.2.0"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:hammer, "~> 6.2"}
     ]
   end
 

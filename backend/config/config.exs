@@ -45,8 +45,11 @@ config :boton_backend, Oban,
     {Oban.Plugins.Pruner, max_age: 86_400}
   ]
 
+config :hammer,
+  backend: {Hammer.Backend.ETS, [expiry_ms: 300_000, cleanup_interval_ms: 600_000]}
+
 config :cors_plug,
-  origin: ["*"],
+  origin: ["https://elbotonapp.com", "https://www.elbotonapp.com"],
   headers: ["authorization", "content-type", "accept"]
 
 # Configure Elixir's Logger

@@ -3,15 +3,22 @@ defmodule BotonBackendWeb.Router do
 
   pipeline :api do
     plug :accepts, ["json"]
+    plug BotonBackendWeb.Plugs.RateLimit, limit: 60, period_ms: 60_000, key_prefix: "api"
+  end
+
+  pipeline :auth_api do
+    plug :accepts, ["json"]
+    plug BotonBackendWeb.Plugs.RateLimit, limit: 10, period_ms: 60_000, key_prefix: "auth"
   end
 
   pipeline :authenticated_api do
     plug :accepts, ["json"]
+    plug BotonBackendWeb.Plugs.RateLimit, limit: 120, period_ms: 60_000, key_prefix: "authed"
     plug BotonBackendWeb.Plugs.RequireAuthenticatedUser
   end
 
   scope "/", BotonBackendWeb do
-    pipe_through :api
+    pipe_through :auth_api
 
     post "/auth/otp/request", AuthController, :request
     post "/auth/otp/verify", AuthController, :verify

@@ -39,11 +39,20 @@ if config_env() != :test do
     pool_size: String.to_integer(System.get_env("POOL_SIZE", "10")),
     types: BotonBackend.PostgresTypes
 
+  apple_review_config =
+    case {optional_env.("APPLE_REVIEW_PHONE"), optional_env.("APPLE_REVIEW_CODE")} do
+      {phone, code} when is_binary(phone) and is_binary(code) ->
+        [apple_review_phone: phone, apple_review_code: code]
+      _ ->
+        []
+    end
+
   config :boton_backend, BotonBackend.Auth,
-    jwt_secret:
-      System.get_env("JWT_SIGNING_SECRET") || "dev-jwt-signing-secret-change-me",
-    token_hash_secret:
-      System.get_env("TOKEN_HASH_SECRET") || "dev-token-hash-secret-change-me"
+    [{:jwt_secret,
+      System.get_env("JWT_SIGNING_SECRET") || "dev-jwt-signing-secret-change-me"},
+     {:token_hash_secret,
+      System.get_env("TOKEN_HASH_SECRET") || "dev-token-hash-secret-change-me"}
+    ] ++ apple_review_config
 
   config :boton_backend, BotonBackendWeb.Endpoint,
     secret_key_base:
@@ -74,7 +83,7 @@ if config_env() == :prod do
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :boton_backend, BotonBackend.Repo,
-    # ssl: true,
+    ssl: System.get_env("DATABASE_SSL", "true") != "false",
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     types: BotonBackend.PostgresTypes,

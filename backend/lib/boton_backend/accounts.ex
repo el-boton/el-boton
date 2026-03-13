@@ -13,76 +13,34 @@ defmodule BotonBackend.Accounts do
   @otp_request_limit 5
   @otp_ip_request_limit 10
 
-  @apple_review_phone "+15555555555"
-  @apple_review_code "102213"
+  # E.164: + followed by 1-15 digits
+  @e164_regex ~r/^\+[1-9]\d{1,14}$/
 
   def get_user(user_id), do: Repo.get(User, user_id)
 
   def get_profile(user_id), do: Repo.get(Profile, user_id)
 
-  def request_otp(phone, _context) when phone in [@apple_review_phone, "15555555555", "5555555555"] do
-    {:ok, %{ok: true}}
-  end
-
   def request_otp(phone, context) do
     normalized_phone = normalize_phone(phone)
 
-    with :ok <- ensure_otp_rate_limit(normalized_phone, context) do
-      code = generate_otp_code()
-      salt = random_token(16)
-      expires_at = DateTime.add(DateTime.utc_now(), auth_config(:otp_ttl_seconds), :second)
-
-      attrs = %{
-        phone: normalized_phone,
-        code_hash: hash_secret("#{salt}:#{normalized_phone}:#{code}"),
-        code_salt: salt,
-        expires_at: expires_at,
-        ip_address: context.ip_address,
-        user_agent: context.user_agent
-      }
-
-      changeset = PhoneOtpChallenge.changeset(%PhoneOtpChallenge{}, attrs)
-
-      case Repo.insert(changeset) do
-        {:ok, challenge} ->
-          case send_otp(normalized_phone, code) do
-            :ok ->
-              record_audit("otp_requested", %{phone: normalized_phone, ip_address: context.ip_address, metadata: %{challenge_id: challenge.id}})
-              {:ok, %{ok: true}}
-
-            {:error, _reason} ->
-              {:error, :otp_request_failed, "Failed to request verification code"}
-          end
-
-        {:error, _changeset} ->
-          {:error, :otp_request_failed, "Failed to request verification code"}
+    with :ok <- validate_e164(normalized_phone) do
+      if apple_review_bypass?(normalized_phone) do
+        {:ok, %{ok: true}}
+      else
+        do_request_otp(normalized_phone, context)
       end
-    end
-  end
-
-  def verify_otp(phone, @apple_review_code, context) when phone in [@apple_review_phone, "15555555555", "5555555555"] do
-    normalized_phone = normalize_phone(phone)
-
-    with {:ok, user} <- get_or_create_user(normalized_phone),
-         {:ok, _profile} <- ensure_profile(user),
-         {:ok, session} <- create_session(user, context) do
-      record_audit("otp_verified", %{user_id: user.id, phone: normalized_phone, ip_address: context.ip_address, metadata: %{apple_review: true}})
-      {:ok, session}
-    else
-      _ -> {:error, :invalid_otp, "Invalid or expired verification code"}
     end
   end
 
   def verify_otp(phone, code, context) do
     normalized_phone = normalize_phone(phone)
 
-    case latest_active_challenge(normalized_phone) do
-      nil ->
-        record_audit("otp_verify_failed", %{phone: normalized_phone, ip_address: context.ip_address, metadata: %{reason: "missing_challenge"}})
-        {:error, :invalid_otp, "Invalid or expired verification code"}
-
-      %PhoneOtpChallenge{} = challenge ->
-        verify_challenge(challenge, normalized_phone, code, context)
+    with :ok <- validate_e164(normalized_phone) do
+      if apple_review_bypass?(normalized_phone) and code == apple_review_code() do
+        verify_apple_review(normalized_phone, context)
+      else
+        do_verify_otp(normalized_phone, code, context)
+      end
     end
   end
 
@@ -181,6 +139,81 @@ defmodule BotonBackend.Accounts do
       {:ok, user}
     else
       _ -> {:error, :unauthorized}
+    end
+  end
+
+  # -- Apple review bypass (env-gated) --
+
+  defp apple_review_bypass?(phone) do
+    case apple_review_phone() do
+      nil -> false
+      review_phone -> phone == review_phone
+    end
+  end
+
+  defp apple_review_phone do
+    Application.get_env(:boton_backend, BotonBackend.Auth)[:apple_review_phone]
+  end
+
+  defp apple_review_code do
+    Application.get_env(:boton_backend, BotonBackend.Auth)[:apple_review_code]
+  end
+
+  defp verify_apple_review(phone, context) do
+    with {:ok, user} <- get_or_create_user(phone),
+         {:ok, _profile} <- ensure_profile(user),
+         {:ok, session} <- create_session(user, context) do
+      record_audit("otp_verified", %{user_id: user.id, phone: phone, ip_address: context.ip_address, metadata: %{apple_review: true}})
+      {:ok, session}
+    else
+      _ -> {:error, :invalid_otp, "Invalid or expired verification code"}
+    end
+  end
+
+  # -- OTP request/verify implementation --
+
+  defp do_request_otp(phone, context) do
+    with :ok <- ensure_otp_rate_limit(phone, context) do
+      code = generate_otp_code()
+      salt = random_token(16)
+      expires_at = DateTime.add(DateTime.utc_now(), auth_config(:otp_ttl_seconds), :second)
+
+      attrs = %{
+        phone: phone,
+        code_hash: hash_secret("#{salt}:#{phone}:#{code}"),
+        code_salt: salt,
+        expires_at: expires_at,
+        ip_address: context.ip_address,
+        user_agent: context.user_agent
+      }
+
+      changeset = PhoneOtpChallenge.changeset(%PhoneOtpChallenge{}, attrs)
+
+      case Repo.insert(changeset) do
+        {:ok, challenge} ->
+          case send_otp(phone, code) do
+            :ok ->
+              record_audit("otp_requested", %{phone: phone, ip_address: context.ip_address, metadata: %{challenge_id: challenge.id}})
+              {:ok, %{ok: true}}
+
+            {:error, _reason} ->
+              {:error, :otp_request_failed, "Failed to request verification code"}
+          end
+
+        {:error, _changeset} ->
+          {:error, :otp_request_failed, "Failed to request verification code"}
+      end
+    end
+  end
+
+  defp do_verify_otp(phone, code, context) do
+    case latest_active_challenge(phone) do
+      nil ->
+        record_audit("otp_verify_failed", %{phone: phone, ip_address: context.ip_address, metadata: %{reason: "missing_challenge"}})
+        {:error, :invalid_otp, "Invalid or expired verification code"}
+
+      %PhoneOtpChallenge{} = challenge ->
+        verify_challenge(challenge, phone, code, context)
     end
   end
 
@@ -353,11 +386,24 @@ defmodule BotonBackend.Accounts do
     provider.deliver_otp(phone, code)
   end
 
+  defp validate_e164(phone) do
+    if Regex.match?(@e164_regex, phone) do
+      :ok
+    else
+      {:error, :invalid_phone, "Phone number must be in E.164 format (e.g. +1234567890)"}
+    end
+  end
+
   defp normalize_phone(phone) do
     phone
     |> to_string()
     |> String.trim()
+    |> String.replace(~r/[\s\-\(\)]/, "")
+    |> maybe_prepend_plus()
   end
+
+  defp maybe_prepend_plus("+" <> _ = phone), do: phone
+  defp maybe_prepend_plus(phone), do: "+" <> phone
 
   defp random_token(bytes) do
     bytes
@@ -366,8 +412,12 @@ defmodule BotonBackend.Accounts do
   end
 
   defp generate_otp_code do
-    :rand.uniform(1_000_000)
-    |> Kernel.-(1)
+    # Use CSPRNG instead of :rand.uniform
+    bytes = :crypto.strong_rand_bytes(4)
+    <<n::unsigned-32>> = bytes
+    code = rem(n, 1_000_000)
+
+    code
     |> Integer.to_string()
     |> String.pad_leading(6, "0")
   end
