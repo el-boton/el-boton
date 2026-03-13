@@ -78,7 +78,7 @@ type TabType = 'responders' | 'messages';
 export default function AlertScreen() {
   const { t } = useTranslation();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
 
   const [alert, setAlert] = useState<Alert | null>(null);
   const [responses, setResponses] = useState<ResponseWithProfile[]>([]);
@@ -167,9 +167,23 @@ export default function AlertScreen() {
   };
 
   const handleRespond = async (status: 'acknowledged' | 'en_route' | 'arrived') => {
+    // Optimistic local update
+    if (user?.id) {
+      setResponses((prev) => {
+        const existing = prev.find((r) => r.responder_id === user.id);
+        if (existing) {
+          return prev.map((r) => r.responder_id === user.id ? { ...r, status } : r);
+        }
+        return [...prev, {
+          alert_id: id!,
+          responder_id: user.id,
+          status,
+          responded_at: new Date().toISOString(),
+          responder: { display_name: profile?.display_name || null },
+        } as ResponseWithProfile];
+      });
+    }
     await respondToAlert(id!, status);
-    const r = await getResponses(id!);
-    if (r) setResponses(r);
   };
 
   const handleSendMessage = async () => {
