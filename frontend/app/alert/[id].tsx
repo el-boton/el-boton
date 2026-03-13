@@ -115,8 +115,8 @@ export default function AlertScreen() {
       }
     });
 
-    // Poll as fallback — channel broadcasts aren't reliably reaching the client
-    const poll = setInterval(refetchAll, 5000);
+    // Poll as safety net in case channel drops
+    const poll = setInterval(refetchAll, 30000);
 
     return () => {
       alertSub.unsubscribe();
