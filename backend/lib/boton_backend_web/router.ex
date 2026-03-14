@@ -23,6 +23,10 @@ defmodule BotonBackendWeb.Router do
   end
 
   scope "/", BotonBackendWeb do
+    get "/join/:code", InviteController, :show
+  end
+
+  scope "/", BotonBackendWeb do
     pipe_through :auth_api
 
     post "/auth/otp/request", AuthController, :request
