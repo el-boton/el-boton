@@ -2,17 +2,58 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="8dp"
     android:background="@android:color/transparent">
 
-    <ImageButton
-        android:id="@+id/alert_button"
+    <FrameLayout
+        android:id="@+id/alert_button_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="center"
-        android:background="@drawable/widget_button_background"
-        android:src="@drawable/widget_alert_icon"
-        android:scaleType="centerInside"
-        android:contentDescription="@string/widget_button_description" />
+        android:padding="4dp">
+
+        <!-- Background circle with gradient -->
+        <ImageView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/widget_button_background"
+            android:importantForAccessibility="no" />
+
+        <!-- Content: icon + text centered -->
+        <LinearLayout
+            android:id="@+id/alert_button"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center_horizontal"
+            android:orientation="vertical"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="@string/widget_button_description">
+
+            <ImageView
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:src="@drawable/widget_alert_icon"
+                android:importantForAccessibility="no" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="HELP"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hold 3s"
+                android:textColor="#CCFFFFFF"
+                android:textSize="9sp"
+                android:layout_marginTop="1dp" />
+
+        </LinearLayout>
+    </FrameLayout>
 
 </FrameLayout>

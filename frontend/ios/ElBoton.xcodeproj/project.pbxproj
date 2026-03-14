@@ -20,6 +20,11 @@
 		B92223C906D948F9936496B2 /* Geohash.swift in Sources */ = {isa = PBXBuildFile; fileRef = C77F443CEBA1464E90D89FD7; };
 		1C53BCAEB7A7433E8EC2B1E2 /* ElBotonWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D6E27DF5F5FD4211A007E501; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		056883E00FA643E19C9A71AD /* alarm.wav in Resources */ = {isa = PBXBuildFile; fileRef = 8B51FBB92547423F8CEA4141 /* alarm.wav */; };
+		2F0D83F11C5F44D5B4F928A1 /* AppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62E5A0721FA24F69B1E1438A /* AppShortcuts.swift */; };
+		A85E4D76F8594E9B914E8BB3 /* AlertIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D4E81162D1542EBB72A3273 /* AlertIntent.swift */; };
+		C618B0D852B4404C8A84F87D /* SharedCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D56188C253F4BFEB26FCCCD /* SharedCredentials.swift */; };
+		4D4A4EE4E960474998B13140 /* BackendAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97AD6D221B724EF0B2FC6208 /* BackendAPIClient.swift */; };
+		BDC5F65E18034E58BC4D5F9D /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026049CC1763443A965F89CD /* LocationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +47,7 @@
 		C7068954B70441AF8A185894 /* ElBotonWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ElBotonWidget.entitlements; sourceTree = "<group>"; };
 		D6E27DF5F5FD4211A007E501 /* ElBotonWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ElBotonWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		8B51FBB92547423F8CEA4141 /* alarm.wav */ = {isa = PBXFileReference; name = "alarm.wav"; path = "ElBoton/alarm.wav"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		62E5A0721FA24F69B1E1438A /* AppShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppShortcuts.swift; path = ElBoton/AppShortcuts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +72,7 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				62E5A0721FA24F69B1E1438A /* AppShortcuts.swift */,
 				F11748442D0722820044C1D9 /* ElBoton-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -304,6 +311,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				2F0D83F11C5F44D5B4F928A1 /* AppShortcuts.swift in Sources */,
+				A85E4D76F8594E9B914E8BB3 /* AlertIntent.swift in Sources */,
+				C618B0D852B4404C8A84F87D /* SharedCredentials.swift in Sources */,
+				4D4A4EE4E960474998B13140 /* BackendAPIClient.swift in Sources */,
+				BDC5F65E18034E58BC4D5F9D /* LocationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

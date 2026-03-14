@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="send_alert"
+        android:enabled="true"
+        android:icon="@drawable/widget_alert_icon"
+        android:shortcutShortLabel="@string/shortcut_send_alert_short"
+        android:shortcutLongLabel="@string/shortcut_send_alert_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:targetPackage="com.elboton.app"
+            android:targetClass="com.elboton.app.widget.WidgetHoldActivity" />
+    </shortcut>
+</shortcuts>

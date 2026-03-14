@@ -1,6 +1,5 @@
 import AppIntents
 import CoreLocation
-import WidgetKit
 
 @available(iOS 17.0, *)
 struct TriggerAlertIntent: AppIntent {

@@ -1,7 +1,7 @@
 package com.elboton.app.widget
 
 import android.Manifest
-import android.animation.ObjectAnimator
+import android.app.Activity
 import android.animation.ValueAnimator
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -16,11 +16,12 @@ import android.os.Vibrator
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
-import android.view.animation.AccelerateDecelerateInterpolator
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.RectF
+import android.view.animation.LinearInterpolator
 import android.widget.FrameLayout
-import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -28,7 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class WidgetHoldActivity : AppCompatActivity() {
+class WidgetHoldActivity : Activity() {
 
     companion object {
         private const val HOLD_DURATION = 3000L // 3 seconds
@@ -37,10 +38,10 @@ class WidgetHoldActivity : AppCompatActivity() {
 
     private var holdStartTime: Long = 0
     private var isHolding = false
-    private var progressAnimator: ObjectAnimator? = null
+    private var progressAnimator: ValueAnimator? = null
     private var alertJob: Job? = null
 
-    private lateinit var progressBar: ProgressBar
+    private lateinit var progressRing: CircularProgressView
     private lateinit var statusText: TextView
     private lateinit var buttonContainer: FrameLayout
     private lateinit var vibrator: Vibrator
@@ -89,7 +90,7 @@ class WidgetHoldActivity : AppCompatActivity() {
             }
         }
 
-        // Background circle
+        // Background circle with radial gradient
         val backgroundCircle = View(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -97,23 +98,21 @@ class WidgetHoldActivity : AppCompatActivity() {
             )
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(Color.parseColor("#DC2626"))
+                gradientType = GradientDrawable.RADIAL_GRADIENT
+                gradientRadius = (100 * resources.displayMetrics.density)
+                colors = intArrayOf(
+                    Color.parseColor("#E63333"),
+                    Color.parseColor("#B31A1A")
+                )
             }
         }
 
-        // Progress bar (circular)
-        progressBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+        // Circular progress ring
+        progressRing = CircularProgressView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
-            isIndeterminate = false
-            max = 100
-            progress = 0
-            progressDrawable = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
-                setStroke(8, Color.WHITE)
-            }
         }
 
         // Status text
@@ -132,7 +131,7 @@ class WidgetHoldActivity : AppCompatActivity() {
         }
 
         buttonContainer.addView(backgroundCircle)
-        buttonContainer.addView(progressBar)
+        buttonContainer.addView(progressRing)
         buttonContainer.addView(statusText)
         rootLayout.addView(buttonContainer)
 
@@ -146,10 +145,13 @@ class WidgetHoldActivity : AppCompatActivity() {
         // Vibrate on start
         vibrate(30)
 
-        // Start progress animation
-        progressAnimator = ObjectAnimator.ofInt(progressBar, "progress", 0, 100).apply {
+        // Animate the circular progress ring
+        progressAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = HOLD_DURATION
-            interpolator = AccelerateDecelerateInterpolator()
+            interpolator = LinearInterpolator()
+            addUpdateListener { animation ->
+                progressRing.progress = animation.animatedValue as Float
+            }
             start()
         }
 
@@ -166,7 +168,7 @@ class WidgetHoldActivity : AppCompatActivity() {
         isHolding = false
         handler.removeCallbacks(holdCompleteRunnable)
         progressAnimator?.cancel()
-        progressBar.progress = 0
+        progressRing.progress = 0f
 
         statusText.text = "HOLD\nTO ALERT"
 
@@ -338,6 +340,35 @@ class WidgetHoldActivity : AppCompatActivity() {
             cancelHold()
         } else {
             super.onBackPressed()
+        }
+    }
+
+    /**
+     * Custom view that draws a circular arc as a progress ring.
+     */
+    private class CircularProgressView(context: android.content.Context) : View(context) {
+        var progress: Float = 0f
+            set(value) {
+                field = value.coerceIn(0f, 1f)
+                invalidate()
+            }
+
+        private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 6f * resources.displayMetrics.density
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        private val rect = RectF()
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            if (progress <= 0f) return
+
+            val inset = paint.strokeWidth / 2f
+            rect.set(inset, inset, width - inset, height - inset)
+            canvas.drawArc(rect, -90f, 360f * progress, false, paint)
         }
     }
 }

@@ -2,6 +2,7 @@ const {
   withXcodeProject,
   withEntitlementsPlist,
   withInfoPlist,
+  withDangerousMod,
   IOSConfig,
 } = require('@expo/config-plugins');
 const path = require('path');
@@ -74,6 +75,22 @@ function withIOSWidget(config, props) {
     ];
 
     for (const file of nativeModuleFiles) {
+      const sourcePath = path.join(sourceDir, file);
+      const destPath = path.join(mainAppDir, file);
+      if (fs.existsSync(sourcePath)) {
+        fs.copyFileSync(sourcePath, destPath);
+      }
+    }
+
+    const mainAppSwiftFiles = [
+      'AppShortcuts.swift',
+      'AlertIntent.swift',
+      'SharedCredentials.swift',
+      'BackendAPIClient.swift',
+      'LocationManager.swift',
+    ];
+
+    for (const file of mainAppSwiftFiles) {
       const sourcePath = path.join(sourceDir, file);
       const destPath = path.join(mainAppDir, file);
       if (fs.existsSync(sourcePath)) {
@@ -403,6 +420,13 @@ function withIOSWidget(config, props) {
     );
 
     if (mainTargetUuid) {
+      const getRefValue = (ref) => (ref && typeof ref === 'object' ? ref.value : ref);
+      const pbxGroups = xcodeProject.hash.project.objects.PBXGroup || {};
+      const appGroupUuid = Object.keys(pbxGroups).find((key) => {
+        const group = pbxGroups[key];
+        return group && typeof group === 'object' && group.name === appName;
+      });
+      const appGroup = appGroupUuid ? pbxGroups[appGroupUuid] : null;
       // Create target dependency
       const dependencyUuid = xcodeProject.generateUuid();
       const containerProxyUuid = xcodeProject.generateUuid();
@@ -426,6 +450,84 @@ function withIOSWidget(config, props) {
       xcodeProject.hash.project.objects.PBXTargetDependency[dependencyUuid + '_comment'] = 'PBXTargetDependency';
 
       const mainTarget = xcodeProject.hash.project.objects.PBXNativeTarget[mainTargetUuid];
+
+      const sourcesPhaseRef = Array.isArray(mainTarget?.buildPhases)
+        ? mainTarget.buildPhases.find((phaseRef) => {
+            const phaseUuid = getRefValue(phaseRef);
+            return !!xcodeProject.hash.project.objects.PBXSourcesBuildPhase?.[phaseUuid];
+          })
+        : null;
+
+      const sourcesPhaseUuid = getRefValue(sourcesPhaseRef);
+      const sourcesPhase =
+        sourcesPhaseUuid &&
+        xcodeProject.hash.project.objects.PBXSourcesBuildPhase?.[sourcesPhaseUuid];
+
+      for (const file of mainAppSwiftFiles) {
+        const existingFileRefUuid = Object.keys(
+          xcodeProject.hash.project.objects.PBXFileReference
+        ).find((key) => {
+          if (key.includes('_comment')) return false;
+          const fileRef = xcodeProject.hash.project.objects.PBXFileReference[key];
+          return (
+            fileRef &&
+            typeof fileRef === 'object' &&
+            fileRef.path === `${appName}/${file}`
+          );
+        });
+
+        const fileRefUuid = existingFileRefUuid || xcodeProject.generateUuid();
+
+        if (!existingFileRefUuid) {
+          xcodeProject.hash.project.objects.PBXFileReference[fileRefUuid] = {
+            isa: 'PBXFileReference',
+            lastKnownFileType: 'sourcecode.swift',
+            name: file,
+            path: `${appName}/${file}`,
+            sourceTree: '"<group>"',
+          };
+          xcodeProject.hash.project.objects.PBXFileReference[fileRefUuid + '_comment'] = file;
+        }
+
+        if (appGroup && Array.isArray(appGroup.children)) {
+          const alreadyInGroup = appGroup.children.some(
+            (child) => getRefValue(child) === fileRefUuid
+          );
+
+          if (!alreadyInGroup) {
+            appGroup.children.push(asPbxRef(fileRefUuid, file));
+          }
+        }
+
+        const existingBuildFileUuid = Object.keys(
+          xcodeProject.hash.project.objects.PBXBuildFile
+        ).find((key) => {
+          if (key.includes('_comment')) return false;
+          const buildFile = xcodeProject.hash.project.objects.PBXBuildFile[key];
+          return buildFile && typeof buildFile === 'object' && buildFile.fileRef === fileRefUuid;
+        });
+
+        const buildFileUuid = existingBuildFileUuid || xcodeProject.generateUuid();
+
+        if (!existingBuildFileUuid) {
+          xcodeProject.hash.project.objects.PBXBuildFile[buildFileUuid] = {
+            isa: 'PBXBuildFile',
+            fileRef: fileRefUuid,
+          };
+          xcodeProject.hash.project.objects.PBXBuildFile[buildFileUuid + '_comment'] = `${file} in Sources`;
+        }
+
+        if (sourcesPhase && Array.isArray(sourcesPhase.files)) {
+          const alreadyInSources = sourcesPhase.files.some(
+            (phaseFile) => getRefValue(phaseFile) === buildFileUuid
+          );
+
+          if (!alreadyInSources) {
+            sourcesPhase.files.push(asPbxRef(buildFileUuid, `${file} in Sources`));
+          }
+        }
+      }
+
       if (mainTarget && Array.isArray(mainTarget.dependencies)) {
         mainTarget.dependencies.push(asPbxRef(dependencyUuid, 'PBXTargetDependency'));
       }
@@ -467,6 +569,45 @@ function withIOSWidget(config, props) {
 
     return config;
   });
+
+  config = withDangerousMod(config, [
+    'ios',
+    async (config) => {
+      const appName = config.modRequest.projectName || 'ElBoton';
+      const appDelegatePath = path.join(
+        config.modRequest.platformProjectRoot,
+        appName,
+        'AppDelegate.swift'
+      );
+
+      if (!fs.existsSync(appDelegatePath)) {
+        return config;
+      }
+
+      let contents = fs.readFileSync(appDelegatePath, 'utf8');
+
+      if (!contents.includes('import AppIntents')) {
+        contents = contents.replace('import Expo', 'import Expo\nimport AppIntents');
+      }
+
+      if (!contents.includes('ElBotonAppShortcuts.updateAppShortcutParameters()')) {
+        contents = contents.replace(
+          /factory\.startReactNative\(\s*withModuleName: "main",\s*in: window,\s*launchOptions: launchOptions\)/m,
+          `factory.startReactNative(
+      withModuleName: "main",
+      in: window,
+      launchOptions: launchOptions)
+
+    if #available(iOS 17.0, *) {
+      ElBotonAppShortcuts.updateAppShortcutParameters()
+    }`
+        );
+      }
+
+      fs.writeFileSync(appDelegatePath, contents);
+      return config;
+    },
+  ]);
 
   return config;
 }

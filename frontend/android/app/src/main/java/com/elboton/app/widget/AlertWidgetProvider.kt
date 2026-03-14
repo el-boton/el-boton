@@ -34,14 +34,12 @@ class AlertWidgetProvider : AppWidgetProvider() {
             appWidgetManager: AppWidgetManager,
             appWidgetId: Int
         ) {
-            val views = RemoteViews(context.packageName, R.layout.widget_alert_button)
-
-            // Check if authenticated
             val credentialManager = CredentialManager(context)
             val isAuthenticated = credentialManager.isAuthenticated()
 
             if (isAuthenticated) {
-                // Set up click to open hold activity
+                val views = RemoteViews(context.packageName, R.layout.widget_alert_button)
+
                 val intent = Intent(context, WidgetHoldActivity::class.java).apply {
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                             Intent.FLAG_ACTIVITY_CLEAR_TOP or
@@ -56,8 +54,10 @@ class AlertWidgetProvider : AppWidgetProvider() {
                 )
 
                 views.setOnClickPendingIntent(R.id.alert_button, pendingIntent)
+                appWidgetManager.updateAppWidget(appWidgetId, views)
             } else {
-                // Open main app for login
+                val views = RemoteViews(context.packageName, R.layout.widget_alert_unauthenticated)
+
                 val packageManager = context.packageManager
                 val launchIntent = packageManager.getLaunchIntentForPackage(context.packageName)
                 launchIntent?.let {
@@ -68,11 +68,11 @@ class AlertWidgetProvider : AppWidgetProvider() {
                         it,
                         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
-                    views.setOnClickPendingIntent(R.id.alert_button, pendingIntent)
+                    views.setOnClickPendingIntent(R.id.login_button, pendingIntent)
                 }
-            }
 
-            appWidgetManager.updateAppWidget(appWidgetId, views)
+                appWidgetManager.updateAppWidget(appWidgetId, views)
+            }
         }
     }
 }

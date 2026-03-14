@@ -1,8 +1,47 @@
 <?xml version="1.0" encoding="utf-8"?>
-<shape xmlns:android="http://schemas.android.com/apk/res/android"
-    android:shape="oval">
-    <solid android:color="#DC2626" />
-    <stroke
-        android:width="3dp"
-        android:color="#991B1B" />
-</shape>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer glow -->
+    <item
+        android:left="4dp"
+        android:top="4dp"
+        android:right="4dp"
+        android:bottom="4dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="80dp"
+                android:startColor="#4DFF0000"
+                android:endColor="#00000000"
+                android:centerX="50%"
+                android:centerY="50%" />
+        </shape>
+    </item>
+    <!-- Main circle with gradient -->
+    <item
+        android:left="12dp"
+        android:top="12dp"
+        android:right="12dp"
+        android:bottom="12dp">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="56dp"
+                android:startColor="#E63333"
+                android:endColor="#B31A1A"
+                android:centerX="50%"
+                android:centerY="50%" />
+        </shape>
+    </item>
+    <!-- Inner stroke for depth -->
+    <item
+        android:left="14dp"
+        android:top="14dp"
+        android:right="14dp"
+        android:bottom="14dp">
+        <shape android:shape="oval">
+            <stroke
+                android:width="1dp"
+                android:color="#33FFFFFF" />
+        </shape>
+    </item>
+</layer-list>

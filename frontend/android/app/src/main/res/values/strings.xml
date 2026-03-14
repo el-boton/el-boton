@@ -2,6 +2,8 @@
   <string name="app_name">El Boton</string>
   <string name="widget_description">Quick emergency alert button</string>
   <string name="widget_button_description">Hold to send emergency alert</string>
+  <string name="shortcut_send_alert_short">Send Alert</string>
+  <string name="shortcut_send_alert_long">Send Emergency Alert</string>
   <string name="expo_splash_screen_resize_mode" translatable="false">contain</string>
   <string name="expo_splash_screen_status_bar_translucent" translatable="false">false</string>
 </resources>

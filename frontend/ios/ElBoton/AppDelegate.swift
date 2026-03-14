@@ -1,4 +1,5 @@
 import Expo
+import AppIntents
 import React
 import ReactAppDependencyProvider
 
@@ -27,6 +28,10 @@ public class AppDelegate: ExpoAppDelegate {
       withModuleName: "main",
       in: window,
       launchOptions: launchOptions)
+
+    if #available(iOS 17.0, *) {
+      ElBotonAppShortcuts.updateAppShortcutParameters()
+    }
 #endif
 
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
