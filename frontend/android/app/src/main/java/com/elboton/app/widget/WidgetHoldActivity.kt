@@ -199,6 +199,7 @@ class WidgetHoldActivity : Activity() {
 
     private fun onHoldComplete() {
         if (!isHolding) return
+        isHolding = false
 
         // Success vibration pattern
         vibrate(longArrayOf(0, 80, 50, 80, 50, 120))
@@ -226,7 +227,10 @@ class WidgetHoldActivity : Activity() {
                 val credentialManager = CredentialManager(this@WidgetHoldActivity)
                 var credentials = credentialManager.getCredentials()
 
+                android.util.Log.d("WidgetAlert", "credentials: ${credentials != null}, userId: ${credentials?.userId}, apiUrl: ${credentials?.apiUrl}, expiresAt: ${credentials?.expiresAt}")
+
                 if (credentials == null) {
+                    android.util.Log.e("WidgetAlert", "No credentials found")
                     withContext(Dispatchers.Main) {
                         openAppWithError("auth")
                     }
@@ -238,18 +242,23 @@ class WidgetHoldActivity : Activity() {
                 val location = locationHelper.getCurrentLocation()
 
                 if (location == null) {
+                    android.util.Log.e("WidgetAlert", "No location available")
                     withContext(Dispatchers.Main) {
                         openAppWithError("location")
                     }
                     return@launch
                 }
 
+                android.util.Log.d("WidgetAlert", "location: ${location.latitude}, ${location.longitude}")
+
                 val backendApiClient = BackendApiClient()
                 val now = System.currentTimeMillis() / 1000
 
                 if (credentials.expiresAt <= now) {
+                    android.util.Log.d("WidgetAlert", "Token expired (expiresAt=${credentials.expiresAt}, now=$now), refreshing...")
                     val refreshed = backendApiClient.refreshToken(credentials)
                     if (refreshed == null) {
+                        android.util.Log.e("WidgetAlert", "Token refresh failed")
                         withContext(Dispatchers.Main) {
                             openAppWithError("auth")
                         }
@@ -269,14 +278,18 @@ class WidgetHoldActivity : Activity() {
                         refreshToken = refreshed.refreshToken,
                         expiresAt = refreshed.expiresAt
                     )
+                    android.util.Log.d("WidgetAlert", "Token refreshed successfully")
                 }
 
                 // Create alert
+                android.util.Log.d("WidgetAlert", "Creating alert...")
                 val alertId = backendApiClient.createAlert(
                     credentials,
                     location.latitude,
                     location.longitude
                 )
+
+                android.util.Log.d("WidgetAlert", "Alert result: $alertId")
 
                 withContext(Dispatchers.Main) {
                     if (alertId != null) {
@@ -287,6 +300,7 @@ class WidgetHoldActivity : Activity() {
                     }
                 }
             } catch (e: Exception) {
+                android.util.Log.e("WidgetAlert", "triggerAlert exception", e)
                 withContext(Dispatchers.Main) {
                     openAppWithError("api")
                 }
@@ -303,10 +317,12 @@ class WidgetHoldActivity : Activity() {
     }
 
     private fun openAppWithError(errorType: String) {
-        val intent = Intent(Intent.ACTION_VIEW, Uri.parse("elboton://error?type=$errorType")).apply {
+        val intent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
-        startActivity(intent)
+        if (intent != null) {
+            startActivity(intent)
+        }
         finish()
     }
 

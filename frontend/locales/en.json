@@ -120,7 +120,7 @@
     "invalidCode": "Invalid invite code",
     "alreadyMember": "Already a member",
     "alreadyInCircle": "You are already in this circle",
-    "shareMessage": "Join my El Boton safety circle \"{{name}}\"!\n\nCode: {{code}}",
+    "shareMessage": "Join my El Boton safety circle \"{{name}}\"!\n\nhttps://api.elbotonapp.com/join/{{code}}",
     "shareInvite": "Share Invite",
     "owner": "Owner",
     "you": "you",

@@ -120,7 +120,7 @@
     "invalidCode": "Codigo de invitacion invalido",
     "alreadyMember": "Ya eres miembro",
     "alreadyInCircle": "Ya estas en este circulo",
-    "shareMessage": "Unete a mi circulo de seguridad El Boton \"{{name}}\"!\n\nCodigo: {{code}}",
+    "shareMessage": "Unete a mi circulo de seguridad El Boton \"{{name}}\"!\n\nhttps://api.elbotonapp.com/join/{{code}}",
     "shareInvite": "Compartir Invitacion",
     "owner": "Propietario",
     "you": "tu",

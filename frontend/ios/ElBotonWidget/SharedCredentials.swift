@@ -33,7 +33,7 @@ class SharedCredentials {
             guard let accessToken = tokenJson["access_token"] as? String,
                   let refreshToken = tokenJson["refresh_token"] as? String,
                   let userId = tokenJson["user_id"] as? String,
-                  let expiresAtTimestamp = tokenJson["expires_at"] as? TimeInterval,
+                  let expiresAtTimestamp = doubleValue(from: tokenJson["expires_at"]),
                   let apiUrl = configJson["url"] as? String else {
                 return nil
             }
@@ -49,6 +49,21 @@ class SharedCredentials {
             )
         } catch {
             print("Error parsing credentials: \(error)")
+            return nil
+        }
+    }
+
+    private static func doubleValue(from value: Any?) -> Double? {
+        switch value {
+        case let number as NSNumber:
+            return number.doubleValue
+        case let double as Double:
+            return double
+        case let int as Int:
+            return Double(int)
+        case let string as String:
+            return Double(string)
+        default:
             return nil
         }
     }

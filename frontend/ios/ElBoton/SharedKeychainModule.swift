@@ -26,7 +26,7 @@ class SharedKeychainModule: NSObject {
             guard let accessToken = credentials["accessToken"] as? String,
                   let refreshToken = credentials["refreshToken"] as? String,
                   let userId = credentials["userId"] as? String,
-                  let expiresAt = credentials["expiresAt"] as? Double,
+                  let expiresAt = SharedKeychainModule.doubleValue(from: credentials["expiresAt"]),
                   let apiUrl = credentials["apiUrl"] as? String else {
                 reject("SYNC_ERROR", "Invalid credentials format", nil)
                 return
@@ -124,5 +124,20 @@ class SharedKeychainModule: NSObject {
         defaults.removeObject(forKey: "pendingAction")
         defaults.synchronize()
         resolve(true)
+    }
+
+    private static func doubleValue(from value: Any?) -> Double? {
+        switch value {
+        case let number as NSNumber:
+            return number.doubleValue
+        case let double as Double:
+            return double
+        case let int as Int:
+            return Double(int)
+        case let string as String:
+            return Double(string)
+        default:
+            return nil
+        }
     }
 }

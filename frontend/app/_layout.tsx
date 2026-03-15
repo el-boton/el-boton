@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useColorScheme, Alert, Platform, NativeModules, AppState } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
@@ -7,6 +7,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as Linking from 'expo-linking';
 import * as Location from 'expo-location';
+import * as Notifications from 'expo-notifications';
 import { StatusBar } from 'expo-status-bar';
 import { TamaguiProvider, Theme } from 'tamagui';
 import 'react-native-reanimated';
@@ -15,6 +16,7 @@ import { loadSavedLanguage } from '@/lib/i18n';
 
 import { config } from '../tamagui.config';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { joinCircle } from '@/lib/api/circles';
 
 const LOCATION_SKIPPED_KEY = 'boton.onboarding.location_skipped';
 
@@ -87,6 +89,25 @@ function RootLayoutNav() {
         return;
       }
 
+      // Handle join circle deep links: elboton://join/{code}
+      if (path.startsWith('join/')) {
+        const code = path.replace('join/', '').trim();
+        if (code && user) {
+          joinCircle(code.toUpperCase())
+            .then((circle) => {
+              Alert.alert('Joined Circle', `You joined "${circle.name}"!`);
+              router.replace('/(tabs)/circles');
+            })
+            .catch((err) => {
+              const message = err?.message?.includes('already_member')
+                ? 'You are already a member of this circle.'
+                : 'Invalid or expired invite code.';
+              Alert.alert('Could not join', message);
+            });
+        }
+        return;
+      }
+
       // Handle login redirect from widget: elboton://login
       if (path === 'login') {
         if (!user) {
@@ -148,6 +169,29 @@ function RootLayoutNav() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
         checkPendingAction();
+      }
+    });
+
+    return () => subscription.remove();
+  }, [user, router]);
+
+  // Handle push notification taps → open alert detail
+  useEffect(() => {
+    if (!user) return;
+
+    // Cold start: check if app was opened by tapping a notification
+    Notifications.getLastNotificationResponseAsync().then((response) => {
+      const alertId = response?.notification?.request?.content?.data?.alertId;
+      if (alertId) {
+        router.push(`/alert/${alertId}`);
+      }
+    });
+
+    // Warm: listen for notification taps while app is running
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      const alertId = response?.notification?.request?.content?.data?.alertId;
+      if (alertId) {
+        router.push(`/alert/${alertId}`);
       }
     });
 

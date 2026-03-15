@@ -7,7 +7,7 @@
         android:shortcutShortLabel="@string/shortcut_send_alert_short"
         android:shortcutLongLabel="@string/shortcut_send_alert_long">
         <intent
-            android:action="android.intent.action.VIEW"
+            android:action="com.elboton.app.ACTION_SEND_ALERT"
             android:targetPackage="com.elboton.app"
             android:targetClass="com.elboton.app.widget.WidgetHoldActivity" />
     </shortcut>
