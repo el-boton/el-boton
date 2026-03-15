@@ -21,6 +21,9 @@ defmodule BotonBackendWeb.CircleController do
       {:ok, circle} ->
         json(conn, Serializers.circle_with_role(circle))
 
+      {:error, :circle_limit_reached, message} ->
+        ControllerHelpers.error(conn, :too_many_requests, :circle_limit_reached, message)
+
       {:error, code, message} ->
         ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end

@@ -15,6 +15,8 @@ defmodule BotonBackend.Alerts do
 
   @alert_rate_limit_window_seconds 900
   @alert_rate_limit_max 10
+  @message_rate_limit_window_seconds 60
+  @message_rate_limit_max 10
 
   def create_alert(user_id, latitude, longitude, context) do
     with :ok <- ensure_alert_rate_limit(user_id, context) do
@@ -150,22 +152,26 @@ defmodule BotonBackend.Alerts do
         responded_at: DateTime.utc_now()
       }
 
-      %AlertResponse{}
-      |> AlertResponse.changeset(attrs)
-      |> Repo.insert(
-        on_conflict: [
-          set: [
-            status: status,
-            responded_at: attrs.responded_at
-          ]
-        ],
-        conflict_target: [:alert_id, :responder_id]
-      )
+      case %AlertResponse{}
+           |> AlertResponse.changeset(attrs)
+           |> Repo.insert(
+             on_conflict: [
+               set: [
+                 status: status,
+                 responded_at: attrs.responded_at
+               ]
+             ],
+             conflict_target: [:alert_id, :responder_id]
+           ) do
+        {:ok, _response} ->
+          alert = Repo.get!(Alert, alert_id) |> Repo.preload(sender: :profile)
+          broadcast_responses_updated(alert_id)
+          broadcast_user_alerts(alert)
+          {:ok, :responded}
 
-      alert = Repo.get!(Alert, alert_id) |> Repo.preload(sender: :profile)
-      broadcast_responses_updated(alert_id)
-      broadcast_user_alerts(alert)
-      {:ok, :responded}
+        {:error, changeset} ->
+          {:error, :validation_failed, translate_error(changeset)}
+      end
     end
   end
 
@@ -193,7 +199,8 @@ defmodule BotonBackend.Alerts do
   end
 
   def create_message(user_id, alert_id, message) do
-    with {:ok, _alert} <- get_alert(user_id, alert_id) do
+    with {:ok, _alert} <- get_alert(user_id, alert_id),
+         :ok <- ensure_message_rate_limit(user_id, alert_id) do
       %AlertMessage{}
       |> AlertMessage.changeset(%{
         alert_id: alert_id,
@@ -288,6 +295,25 @@ defmodule BotonBackend.Alerts do
     from(alert in Alert,
       where: ^visibility_dynamic
     )
+  end
+
+  defp ensure_message_rate_limit(user_id, alert_id) do
+    recent_since = DateTime.add(DateTime.utc_now(), -@message_rate_limit_window_seconds, :second)
+
+    recent_count =
+      AlertMessage
+      |> where(
+        [msg],
+        msg.sender_id == ^user_id and msg.alert_id == ^alert_id and
+          msg.created_at >= ^recent_since
+      )
+      |> Repo.aggregate(:count, :id)
+
+    if recent_count >= @message_rate_limit_max do
+      {:error, :message_rate_limited, "Too many messages, please slow down"}
+    else
+      :ok
+    end
   end
 
   defp ensure_alert_rate_limit(user_id, context) do

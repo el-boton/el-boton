@@ -13,7 +13,7 @@ defmodule BotonBackendWeb.Router do
       limit: 10,
       period_ms: 60_000,
       key_prefix: "auth",
-      global_limit: 10
+      global_limit: 100
   end
 
   pipeline :authenticated_api do

@@ -21,6 +21,10 @@ defmodule BotonBackendWeb.CircleControllerTest do
              "memberCount" => 1
            } = json_response(create_conn, 200)
 
+    assert invite_code =~ ~r/^[A-Z0-9]{6}$/
+    refute String.contains?(invite_code, "-")
+    refute String.contains?(invite_code, "_")
+
     join_conn =
       build_conn()
       |> auth_conn(member.session)

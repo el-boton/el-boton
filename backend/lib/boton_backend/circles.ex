@@ -8,6 +8,9 @@ defmodule BotonBackend.Circles do
   alias BotonBackend.Repo
   alias Ecto.Multi
 
+  @max_owned_circles 10
+  @invite_code_length 6
+
   def list_circles_for_user(user_id) do
     member_counts =
       from(member in CircleMember,
@@ -56,6 +59,22 @@ defmodule BotonBackend.Circles do
 
   def create_circle(user_id, name) do
     Multi.new()
+    |> Multi.run(:lock, fn repo, _changes ->
+      # Serialize circle creation per user to prevent race conditions
+      repo.query("SELECT pg_advisory_xact_lock(hashtext('create_circle:' || $1))", [user_id])
+    end)
+    |> Multi.run(:check_limit, fn repo, _changes ->
+      owned_count =
+        CircleMember
+        |> where([m], m.user_id == ^user_id and m.role == "owner")
+        |> repo.aggregate(:count, :user_id)
+
+      if owned_count >= @max_owned_circles do
+        {:error, :circle_limit_reached}
+      else
+        {:ok, owned_count}
+      end
+    end)
     |> Multi.insert(:circle, fn _changes ->
       %Circle{}
       |> Circle.changeset(%{
@@ -85,6 +104,9 @@ defmodule BotonBackend.Circles do
            role: "owner",
            memberCount: 1
          }}
+
+      {:error, :check_limit, :circle_limit_reached, _changes} ->
+        {:error, :circle_limit_reached, "You can own at most #{@max_owned_circles} circles"}
 
       {:error, _step, changeset, _changes} ->
         {:error, :validation_failed, translate_error(changeset)}
@@ -226,11 +248,10 @@ defmodule BotonBackend.Circles do
   end
 
   defp generate_invite_code do
-    6
+    @invite_code_length
     |> :crypto.strong_rand_bytes()
-    |> Base.url_encode64(padding: false)
-    |> binary_part(0, 6)
-    |> String.upcase()
+    |> Base.encode32(padding: false)
+    |> binary_part(0, @invite_code_length)
   end
 
   defp translate_error(changeset) do

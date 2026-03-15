@@ -27,6 +27,33 @@ defmodule BotonBackendWeb.AuthControllerTest do
     assert challenge_count == 1
   end
 
+  test "request otp is rate limited to one request per phone per minute", %{conn: conn} do
+    phone = unique_phone()
+
+    {first_conn, _log} =
+      with_log(fn ->
+        post(conn, ~p"/auth/otp/request", %{phone: phone})
+      end)
+
+    assert %{"ok" => true} = json_response(first_conn, 200)
+
+    second_conn = post(build_conn(), ~p"/auth/otp/request", %{phone: phone})
+
+    assert %{
+             "error" => %{
+               "code" => "otp_rate_limited",
+               "message" => "Please wait before requesting another code"
+             }
+           } = json_response(second_conn, 422)
+
+    challenge_count =
+      PhoneOtpChallenge
+      |> where([challenge], challenge.phone == ^phone)
+      |> Repo.aggregate(:count, :id)
+
+    assert challenge_count == 1
+  end
+
   test "verify otp creates the user profile and session", %{conn: conn} do
     phone = unique_phone()
     code = request_otp_code_from_api(conn, phone)

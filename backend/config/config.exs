@@ -15,7 +15,7 @@ config :boton_backend, BotonBackend.Auth,
   access_token_ttl_seconds: 3600,
   refresh_token_ttl_seconds: 31_536_000,
   otp_ttl_seconds: 300,
-  otp_resend_cooldown_seconds: 30,
+  otp_resend_cooldown_seconds: 60,
   otp_max_attempts: 5,
   nearby_radius_meters: 50_000
 

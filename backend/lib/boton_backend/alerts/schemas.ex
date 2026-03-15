@@ -55,10 +55,13 @@ defmodule BotonBackend.Alerts.AlertResponse do
       primary_key: true
   end
 
+  @valid_statuses ~w(acknowledged en_route arrived)
+
   def changeset(response, attrs) do
     response
     |> cast(attrs, [:alert_id, :responder_id, :status, :responded_at])
     |> validate_required([:alert_id, :responder_id, :status])
+    |> validate_inclusion(:status, @valid_statuses)
   end
 end
 

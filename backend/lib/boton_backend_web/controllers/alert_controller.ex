@@ -93,6 +93,9 @@ defmodule BotonBackendWeb.AlertController do
       {:ok, created_message} ->
         json(conn, created_message)
 
+      {:error, :message_rate_limited, message} ->
+        ControllerHelpers.error(conn, :too_many_requests, :message_rate_limited, message)
+
       {:error, code, message} ->
         ControllerHelpers.error(conn, :unprocessable_entity, code, message)
     end

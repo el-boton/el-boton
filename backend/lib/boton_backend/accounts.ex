@@ -12,6 +12,7 @@ defmodule BotonBackend.Accounts do
   @otp_request_window_minutes 15
   @otp_request_limit 5
   @otp_ip_request_limit 10
+  @otp_daily_global_limit 100
 
   # E.164: + followed by 1-15 digits
   @e164_regex ~r/^\+[1-9]\d{1,14}$/
@@ -410,7 +411,17 @@ defmodule BotonBackend.Accounts do
 
     cooldown_seconds = auth_config(:otp_resend_cooldown_seconds)
 
+    daily_since = DateTime.utc_now() |> DateTime.add(-86_400, :second)
+
+    daily_global_count =
+      AuditLog
+      |> where([audit], audit.action == "otp_requested" and audit.recorded_at >= ^daily_since)
+      |> Repo.aggregate(:count, :id)
+
     cond do
+      daily_global_count >= @otp_daily_global_limit ->
+        {:error, :otp_rate_limited, "Too many verification code requests"}
+
       phone_count >= @otp_request_limit ->
         {:error, :otp_rate_limited, "Too many verification code requests"}
 

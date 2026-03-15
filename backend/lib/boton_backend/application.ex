@@ -12,6 +12,7 @@ defmodule BotonBackend.Application do
       BotonBackend.Repo,
       {DNSCluster, query: Application.get_env(:boton_backend, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: BotonBackend.PubSub},
+      {Registry, keys: :duplicate, name: BotonBackend.SocketRegistry},
       {Oban, Application.fetch_env!(:boton_backend, Oban)},
       BotonBackendWeb.Endpoint
     ]
