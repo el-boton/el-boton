@@ -1,0 +1,35 @@
+release_source: ./frontend/android/app/build/outputs/apk/release/app-release.apk
+repository: https://github.com/anthropics/el-boton
+
+name: El Boton
+summary: Safety in One Button
+description: |
+  El Boton is a community emergency alert app that connects you with your trusted circles instantly.
+
+  Hold the button for 3 seconds and your circle is notified with your exact location. No fumbling, no typing — just hold.
+
+  Features:
+  - One-button emergency alerts with automatic location sharing
+  - Create safety circles for family, neighbors, friends, and coworkers
+  - Real-time response coordination — see who's seen your alert and who's on their way
+  - In-app messaging with responders
+  - Expand alerts to nearby El Boton users when your circle can't respond
+  - Full alert history tracking
+  - Available in English and Spanish
+
+  El Boton is designed to supplement, not replace, official emergency services.
+
+tags:
+  - safety
+  - emergency
+  - community
+  - family
+
+license: proprietary
+website: https://elbotonapp.com
+
+icon: ./frontend/android/app/build/outputs/apk/release/app-release_icon.png
+images:
+  - ../v0-el-boton/public/images/img-3899-1284x2778.png
+  - ../v0-el-boton/public/images/img-3900-1284x2778.png
+  - ../v0-el-boton/public/images/img-3901-1284x2778.png
