@@ -1,7 +1,10 @@
 defmodule BotonBackendWeb.InviteController do
   use BotonBackendWeb, :controller
 
-  # Only allow alphanumeric invite codes (base64url uppercase)
+  @app_store_url "https://apps.apple.com/us/app/el-boton/id6757484682"
+  @zapstore_url "https://zapstore.dev/apps/naddr1qq8kxmmd9ejkccn0w3hkutnpwpcqzxrhwden5te0wfjkccte9eaxzurnw3hhyefwv3jhvq3qtaycl7qfuqk9dp0rhkse8lxhz3az9eanjug8j4ympwehvslnetxqxpqqqplqk89g2dc"
+
+  # Only allow uppercase alphanumeric invite codes.
   @valid_code_regex ~r/^[A-Z0-9]{1,12}$/
 
   def show(conn, %{"code" => code}) do
@@ -13,8 +16,12 @@ defmodule BotonBackendWeb.InviteController do
       |> send_resp(400, "Invalid invite code")
     else
       safe_code = html_escape(code)
-      deep_link = "elboton://join/#{code}"
+
+      # Triple slash keeps "join/..." in the path, which matches the current Expo deep link handler.
+      deep_link = "elboton:///join/#{code}"
       safe_deep_link = html_escape(deep_link)
+      safe_app_store_url = html_escape(@app_store_url)
+      safe_zapstore_url = html_escape(@zapstore_url)
 
       html = """
       <!DOCTYPE html>
@@ -31,7 +38,7 @@ defmodule BotonBackendWeb.InviteController do
           .code { font-size: 32px; font-weight: bold; letter-spacing: 4px; color: #E63333; margin: 24px 0; }
           p { color: #999; font-size: 14px; line-height: 1.5; margin-bottom: 24px; }
           .btn { display: inline-block; background: #E63333; color: #fff; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-size: 16px; font-weight: 600; }
-          .store-links { margin-top: 32px; }
+          .store-links { margin-top: 32px; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
           .store-links a { color: #666; font-size: 13px; }
         </style>
       </head>
@@ -43,7 +50,8 @@ defmodule BotonBackendWeb.InviteController do
           <a class="btn" id="open" href="#{safe_deep_link}">Open in App</a>
           <div class="store-links">
             <p>Don't have the app?</p>
-            <a href="https://apps.apple.com/app/el-boton/id6745136798">App Store</a>
+            <a href="#{safe_app_store_url}">App Store</a>
+            <a href="#{safe_zapstore_url}">Zapstore</a>
           </div>
         </div>
         <script>
