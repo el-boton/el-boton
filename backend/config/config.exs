@@ -19,6 +19,10 @@ config :boton_backend, BotonBackend.Auth,
   otp_max_attempts: 5,
   nearby_radius_meters: 50_000
 
+config :boton_backend, BotonBackend.Privacy,
+  profile_location_ttl_seconds: 7 * 24 * 60 * 60,
+  alert_location_ttl_seconds: 7 * 24 * 60 * 60
+
 config :boton_backend, BotonBackend.Notifications.SMS,
   provider: BotonBackend.Notifications.ConsoleSMSProvider
 
@@ -42,6 +46,10 @@ config :boton_backend, Oban,
   repo: BotonBackend.Repo,
   queues: [default: 10, push: 10],
   plugins: [
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"@hourly", BotonBackend.Privacy.RetentionWorker}
+     ]},
     {Oban.Plugins.Pruner, max_age: 86_400}
   ]
 

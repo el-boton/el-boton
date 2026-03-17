@@ -1,6 +1,8 @@
 defmodule BotonBackendWeb.Serializers do
   @moduledoc false
 
+  alias BotonBackend.Privacy
+
   def profile(nil), do: nil
 
   def profile(profile) do
@@ -16,12 +18,14 @@ defmodule BotonBackendWeb.Serializers do
   end
 
   def alert(alert) do
+    location = Privacy.serialized_alert_location(alert)
+
     %{
       id: alert.id,
       sender_id: alert.sender_id,
-      latitude: alert.latitude,
-      longitude: alert.longitude,
-      geohash: alert.geohash,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      geohash: location.geohash,
       status: alert.status,
       expand_to_nearby: alert.expand_to_nearby,
       created_at: alert.created_at,

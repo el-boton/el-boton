@@ -7,6 +7,7 @@ defmodule BotonBackend.Notifications do
   alias BotonBackend.Accounts.{AuditLog, Profile, User}
   alias BotonBackend.Alerts.{Alert, AlertRecipient, PushDeliveryAttempt}
   alias BotonBackend.Circles.{Circle, CircleMember}
+  alias BotonBackend.Privacy
   alias BotonBackend.Repo
   alias Ecto.Multi
   alias Req.Response
@@ -58,9 +59,13 @@ defmodule BotonBackend.Notifications do
         Application.fetch_env!(:boton_backend, BotonBackend.Auth)
         |> Keyword.fetch!(:nearby_radius_meters)
 
+      location_cutoff = Privacy.profile_location_cutoff()
+
       Profile
       |> where([profile], profile.id != ^alert.sender_id)
       |> where([profile], not is_nil(profile.location))
+      |> where([profile], not is_nil(profile.location_updated_at))
+      |> where([profile], profile.location_updated_at >= ^location_cutoff)
       |> where(
         [profile],
         fragment("ST_DWithin(?, ?, ?)", profile.location, ^alert.location, ^radius)

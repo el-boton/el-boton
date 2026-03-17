@@ -1,8 +1,11 @@
 defmodule BotonBackendWeb.AlertControllerTest do
   use BotonBackendWeb.ConnCase, async: true
 
+  import Ecto.Query
+
   alias BotonBackend.Accounts
-  alias BotonBackend.Alerts.PushDeliveryAttempt
+  alias BotonBackend.Accounts.Profile
+  alias BotonBackend.Alerts.{Alert, PushDeliveryAttempt}
 
   test "circle members can create, respond to, message, and resolve alerts", %{conn: conn} do
     sender = user_fixture(%{display_name: "Sender"})
@@ -229,5 +232,82 @@ defmodule BotonBackendWeb.AlertControllerTest do
 
     assert Enum.count(attempts_after_expand, &(&1.user_id == circle_member.user.id)) == 1
     assert Enum.count(attempts_after_expand, &(&1.user_id == nearby_user.user.id)) == 1
+  end
+
+  test "expanded alerts ignore stale stored profile locations", %{conn: conn} do
+    sender = user_fixture(%{display_name: "Sender"})
+
+    nearby_user =
+      user_fixture(%{
+        display_name: "Nearby User",
+        latitude: 37.7750,
+        longitude: -122.4195
+      })
+
+    stale_updated_at = DateTime.add(DateTime.utc_now(), -(8 * 24 * 60 * 60), :second)
+
+    Profile
+    |> where([profile], profile.id == ^nearby_user.user.id)
+    |> Repo.update_all(set: [location_updated_at: stale_updated_at])
+
+    create_alert_conn =
+      conn
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts", %{latitude: 37.7749, longitude: -122.4194})
+
+    %{"id" => alert_id} = json_response(create_alert_conn, 200)
+
+    expand_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts/#{alert_id}/expand", %{})
+
+    assert %{"id" => ^alert_id, "expand_to_nearby" => true} = json_response(expand_conn, 200)
+
+    history_conn =
+      build_conn()
+      |> auth_conn(nearby_user.session)
+      |> get(~p"/alerts/history")
+
+    assert json_response(history_conn, 200) == []
+  end
+
+  test "alerts older than seven days serialize redacted coordinates", %{conn: conn} do
+    sender = user_fixture(%{display_name: "Sender"})
+
+    create_alert_conn =
+      conn
+      |> auth_conn(sender.session)
+      |> post(~p"/alerts", %{latitude: 37.7749, longitude: -122.4194})
+
+    %{"id" => alert_id} = json_response(create_alert_conn, 200)
+
+    stale_created_at = DateTime.add(DateTime.utc_now(), -(8 * 24 * 60 * 60), :second)
+
+    Alert
+    |> where([alert], alert.id == ^alert_id)
+    |> Repo.update_all(set: [created_at: stale_created_at])
+
+    show_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> get(~p"/alerts/#{alert_id}")
+
+    show_payload = json_response(show_conn, 200)
+
+    assert show_payload["id"] == alert_id
+    assert_in_delta show_payload["latitude"], 0.0, 0.0
+    assert_in_delta show_payload["longitude"], 0.0, 0.0
+
+    history_conn =
+      build_conn()
+      |> auth_conn(sender.session)
+      |> get(~p"/alerts/history")
+
+    assert Enum.any?(json_response(history_conn, 200), fn alert ->
+             alert["id"] == alert_id and
+               abs(alert["latitude"]) == 0.0 and
+               abs(alert["longitude"]) == 0.0
+           end)
   end
 end

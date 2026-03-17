@@ -125,7 +125,13 @@ if config_env() == :prod do
   config :boton_backend, Oban,
     repo: BotonBackend.Repo,
     queues: [default: default_queue_concurrency, push: push_queue_concurrency],
-    plugins: [{Oban.Plugins.Pruner, max_age: 86_400}]
+    plugins: [
+      {Oban.Plugins.Cron,
+       crontab: [
+         {"@hourly", BotonBackend.Privacy.RetentionWorker}
+       ]},
+      {Oban.Plugins.Pruner, max_age: 86_400}
+    ]
 
   config :boton_backend, BotonBackendWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
