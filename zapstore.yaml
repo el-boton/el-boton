@@ -1,2 +1,4 @@
 repository: https://github.com/el-boton/el-boton
-pubkey: npub1fpt2tgna2nladt2nqk48y50fqmsxr5k5dyf3xcqqgz5etgpumhls2eez72
+metadata_sources:
+    - github
+pubkey: npub1taycl7qfuqk9dp0rhkse8lxhz3az9eanjug8j4ympwehvslnetxqkujg5y
