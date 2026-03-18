@@ -164,7 +164,7 @@ const DeleteAccountButton = styled(Button, {
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
-  const appVersion = Constants.expoConfig?.version || Constants.nativeAppVersion || '1.0.1';
+  const appVersion = Constants.expoConfig?.version || Constants.nativeAppVersion || '1.0.2';
   const [profile, setProfile] = useState<Profile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [editing, setEditing] = useState(false);
