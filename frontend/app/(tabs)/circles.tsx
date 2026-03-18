@@ -409,9 +409,15 @@ export default function CirclesScreen() {
             </XStack>
             <Text fontSize={13} color="$textTertiary">{t('circles.code', { code: selectedCircle?.invite_code })}</Text>
           </YStack>
-          <Button size="$3" circular backgroundColor="$bgCard" onPress={() => setShowDetail(false)}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Close"
+            hitSlop={12}
+            onPress={() => setShowDetail(false)}
+            style={styles.closeButton}
+          >
             <X size={20} color="$textSecondary" />
-          </Button>
+          </Pressable>
         </XStack>
 
         <Separator borderColor="$borderSubtle" marginBottom="$4" />
@@ -517,5 +523,13 @@ const styles = StyleSheet.create({
   },
   membersListContent: {
     paddingBottom: 16,
+  },
+  closeButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#232323',
   },
 });

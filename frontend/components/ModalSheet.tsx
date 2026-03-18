@@ -1,5 +1,12 @@
 import React from 'react';
-import { Modal, View, StyleSheet, Pressable, KeyboardAvoidingView, Platform } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { YStack, styled } from 'tamagui';
 
 const SheetContent = styled(YStack, {
@@ -21,8 +28,12 @@ export function ModalSheet({ visible, onClose, children, fullHeight }: Props) {
         <View style={styles.overlay}>
           <Pressable style={styles.overlayTouchable} onPress={onClose} />
           <View style={[styles.content, fullHeight && styles.contentFull]}>
-            <View style={styles.handle} />
-            <SheetContent>{children}</SheetContent>
+            <View style={styles.dragHandleArea}>
+              <View style={styles.handle} />
+            </View>
+            <SheetContent style={fullHeight ? styles.sheetContentFull : undefined}>
+              {children}
+            </SheetContent>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -51,13 +62,19 @@ const styles = StyleSheet.create({
     height: '85%',
     flexDirection: 'column' as const,
   },
+  dragHandleArea: {
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  sheetContentFull: {
+    flex: 1,
+    minHeight: 0,
+  },
   handle: {
     width: 40,
     height: 4,
     backgroundColor: '#383838',
     borderRadius: 2,
     alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 8,
   },
 });

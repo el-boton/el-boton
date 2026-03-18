@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Alert } from 'react-native';
+import Constants from 'expo-constants';
 import * as Location from 'expo-location';
 import * as Notifications from 'expo-notifications';
 import {
@@ -163,6 +164,7 @@ const DeleteAccountButton = styled(Button, {
 export default function SettingsScreen() {
   const { t, i18n } = useTranslation();
   const { user, signOut } = useAuth();
+  const appVersion = Constants.expoConfig?.version || Constants.nativeAppVersion || '1.0.1';
   const [profile, setProfile] = useState<Profile | null>(null);
   const [displayName, setDisplayName] = useState('');
   const [editing, setEditing] = useState(false);
@@ -405,7 +407,7 @@ export default function SettingsScreen() {
                   <RowHint>{t('common.tagline')}</RowHint>
                 </YStack>
               </RowLeft>
-              <RowValue>{t('settings.version')}</RowValue>
+              <RowValue>{`v${appVersion}`}</RowValue>
             </Row>
           </Card>
         </Section>
