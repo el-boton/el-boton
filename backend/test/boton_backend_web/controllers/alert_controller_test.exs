@@ -8,7 +8,11 @@ defmodule BotonBackendWeb.AlertControllerTest do
   alias BotonBackend.Alerts.{Alert, PushDeliveryAttempt}
 
   test "circle members can create, respond to, message, and resolve alerts", %{conn: conn} do
-    sender = user_fixture(%{display_name: "Sender"})
+    sender =
+      user_fixture(%{
+        display_name: "Sender",
+        push_token: "ExponentPushToken[sender]"
+      })
 
     responder =
       user_fixture(%{
@@ -42,6 +46,7 @@ defmodule BotonBackendWeb.AlertControllerTest do
              Repo.get_by(PushDeliveryAttempt, alert_id: alert_id, user_id: responder.user.id)
 
     assert attempt.status == "skipped"
+    assert attempt.response_body["enabled"] == false
 
     history_conn =
       build_conn()
@@ -72,6 +77,21 @@ defmodule BotonBackendWeb.AlertControllerTest do
 
     assert responder_id == responder.user.id
 
+    response_update_attempt =
+      PushDeliveryAttempt
+      |> Repo.all()
+      |> Enum.find(fn attempt ->
+        attempt.alert_id == alert_id and attempt.user_id == sender.user.id and
+          Map.get(attempt.response_body || %{}, "event") == "response_updated"
+      end)
+
+    assert response_update_attempt
+    assert response_update_attempt.status == "skipped"
+
+    assert Enum.count(Repo.all(PushDeliveryAttempt), fn attempt ->
+             attempt.alert_id == alert_id and attempt.user_id == responder.user.id
+           end) == 1
+
     message_conn =
       build_conn()
       |> auth_conn(responder.session)
@@ -86,6 +106,17 @@ defmodule BotonBackendWeb.AlertControllerTest do
       |> get(~p"/alerts/#{alert_id}/messages")
 
     assert [%{"message" => "On my way"}] = json_response(messages_conn, 200)
+
+    message_update_attempt =
+      PushDeliveryAttempt
+      |> Repo.all()
+      |> Enum.find(fn attempt ->
+        attempt.alert_id == alert_id and attempt.user_id == sender.user.id and
+          Map.get(attempt.response_body || %{}, "event") == "message_inserted"
+      end)
+
+    assert message_update_attempt
+    assert message_update_attempt.status == "skipped"
 
     resolve_conn =
       build_conn()

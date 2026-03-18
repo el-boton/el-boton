@@ -5,7 +5,7 @@ defmodule BotonBackend.Notifications do
 
   alias BotonBackend.Accounts
   alias BotonBackend.Accounts.{AuditLog, Profile, User}
-  alias BotonBackend.Alerts.{Alert, AlertRecipient, PushDeliveryAttempt}
+  alias BotonBackend.Alerts.{Alert, AlertMessage, AlertRecipient, AlertResponse, PushDeliveryAttempt}
   alias BotonBackend.Circles.{Circle, CircleMember}
   alias BotonBackend.Privacy
   alias BotonBackend.Repo
@@ -44,6 +44,56 @@ defmodule BotonBackend.Notifications do
     else
       deliver_alert(alert, recipients)
     end
+  end
+
+  def deliver_alert_response_update(%Alert{} = alert, responder_id, status) do
+    actor_name = user_display_name(responder_id)
+    recipients = alert_update_recipient_profiles(alert, [responder_id])
+
+    payload =
+      %{enabled: false, type: "alert_update", event: "response_updated", channel_id: "test_alerts"}
+
+    title = "Alert Update"
+    body = "#{actor_name} #{response_status_phrase(status)}"
+
+    deliver_alert_update(alert.id, recipients, payload, fn recipient ->
+      quiet_alert_update_message(
+        alert.id,
+        recipient,
+        title,
+        body,
+        %{
+          event: "response_updated",
+          status: status,
+          responderId: responder_id
+        }
+      )
+    end)
+  end
+
+  def deliver_alert_message_update(%Alert{} = alert, %AlertMessage{} = alert_message) do
+    actor_name = message_sender_name(alert_message)
+    recipients = alert_update_recipient_profiles(alert, [alert_message.sender_id])
+
+    payload =
+      %{enabled: false, type: "alert_update", event: "message_inserted", channel_id: "test_alerts"}
+
+    title = "New Message"
+    body = "#{actor_name}: #{message_preview(alert_message.message)}"
+
+    deliver_alert_update(alert.id, recipients, payload, fn recipient ->
+      quiet_alert_update_message(
+        alert.id,
+        recipient,
+        title,
+        body,
+        %{
+          event: "message_inserted",
+          messageId: alert_message.id,
+          senderId: alert_message.sender_id
+        }
+      )
+    end)
   end
 
   def recipient_user_ids(%Alert{} = alert) do
@@ -116,6 +166,19 @@ defmodule BotonBackend.Notifications do
     |> Repo.all()
   end
 
+  defp alert_update_recipient_profiles(%Alert{} = alert, excluded_user_ids) do
+    user_ids =
+      ([alert.sender_id] ++ response_user_ids(alert.id) ++ recipient_user_ids(alert))
+      |> Enum.uniq()
+      |> Enum.reject(&(&1 in excluded_user_ids))
+
+    Profile
+    |> where([profile], profile.id in ^user_ids)
+    |> where([profile], not is_nil(profile.push_token))
+    |> select([profile], %{user_id: profile.id, push_token: profile.push_token})
+    |> Repo.all()
+  end
+
   defp deliver_alert(alert, recipients) do
     config = Application.fetch_env!(:boton_backend, BotonBackend.Notifications.ExpoClient)
     enabled? = Keyword.get(config, :enabled, true)
@@ -141,6 +204,74 @@ defmodule BotonBackend.Notifications do
     error ->
       recipients
       |> build_delivery_attempts(alert.id, "failed", nil, Exception.message(error))
+      |> insert_delivery_attempts()
+
+      {:error, :push_delivery_failed}
+  end
+
+  defp deliver_alert_update(_alert_id, [], _payload, _message_builder), do: :ok
+
+  defp deliver_alert_update(alert_id, recipients, skipped_payload, message_builder) do
+    config = Application.fetch_env!(:boton_backend, BotonBackend.Notifications.ExpoClient)
+
+    if Keyword.get(config, :enabled, true) do
+      recipients
+      |> Enum.chunk_every(@expo_max_messages_per_request)
+      |> Enum.reduce_while(:ok, fn chunk, :ok ->
+        messages = Enum.map(chunk, message_builder)
+
+        case Req.post(Keyword.fetch!(config, :endpoint),
+               json: messages,
+               headers: expo_headers(config),
+               retry: false
+             ) do
+          {:ok, %Response{status: status, body: body}} when status in 200..299 ->
+            with {:ok, response_entries} <- extract_response_entries(body) do
+              chunk
+              |> zip_delivery_attempts(alert_id, response_entries)
+              |> insert_delivery_attempts()
+
+              {:cont, :ok}
+            else
+              {:error, message} ->
+                chunk
+                |> build_delivery_attempts(alert_id, "failed", body, message)
+                |> insert_delivery_attempts()
+
+                {:halt, {:error, :push_delivery_failed}}
+            end
+
+          {:ok, %Response{status: status, body: body}} ->
+            chunk
+            |> build_delivery_attempts(
+              alert_id,
+              "failed",
+              body,
+              "Expo push request failed with status #{status}"
+            )
+            |> insert_delivery_attempts()
+
+            {:halt, {:error, :push_delivery_failed}}
+
+          {:error, error} ->
+            chunk
+            |> build_delivery_attempts(alert_id, "failed", nil, Exception.message(error))
+            |> insert_delivery_attempts()
+
+            {:halt, {:error, :push_delivery_failed}}
+        end
+      end)
+    else
+      recipients
+      |> build_delivery_attempts(alert_id, "skipped", skipped_payload, nil)
+      |> insert_delivery_attempts()
+
+      :ok
+    end
+  rescue
+    error ->
+      recipients
+      |> build_delivery_attempts(alert_id, "failed", nil, Exception.message(error))
       |> insert_delivery_attempts()
 
       {:error, :push_delivery_failed}
@@ -320,6 +451,52 @@ defmodule BotonBackend.Notifications do
     sender.display_name || alert.sender.phone || "Someone"
   end
 
+  defp message_sender_name(%AlertMessage{sender: %{profile: profile, phone: phone}}) do
+    profile.display_name || phone || "Someone"
+  end
+
+  defp message_sender_name(%AlertMessage{sender_id: sender_id}), do: user_display_name(sender_id)
+
+  defp user_display_name(user_id) do
+    case Repo.get(Profile, user_id) do
+      %Profile{display_name: display_name} when is_binary(display_name) and display_name != "" ->
+        display_name
+
+      _ ->
+        case Repo.get(User, user_id) do
+          %User{phone: phone} when is_binary(phone) and phone != "" -> phone
+          _ -> "Someone"
+        end
+    end
+  end
+
+  defp response_status_phrase("acknowledged"), do: "acknowledged the alert"
+  defp response_status_phrase("en_route"), do: "is on the way"
+  defp response_status_phrase("arrived"), do: "has arrived"
+  defp response_status_phrase(status), do: "updated their status to #{status}"
+
+  defp message_preview(message) do
+    message
+    |> String.trim()
+    |> String.slice(0, 140)
+  end
+
+  defp quiet_alert_update_message(alert_id, recipient, title, body, data) do
+    %{
+      to: recipient.push_token,
+      sound: "default",
+      title: title,
+      body: body,
+      priority: "normal",
+      channelId: "test_alerts",
+      data:
+        Map.merge(data, %{
+          alertId: alert_id,
+          type: "alert_update"
+        })
+    }
+  end
+
   defp extract_response_entries(%{"data" => response_entries}) when is_list(response_entries),
     do: {:ok, response_entries}
 
@@ -395,6 +572,13 @@ defmodule BotonBackend.Notifications do
   defp insert_delivery_attempts(entries) do
     Repo.insert_all(PushDeliveryAttempt, entries)
     :ok
+  end
+
+  defp response_user_ids(alert_id) do
+    AlertResponse
+    |> where([response], response.alert_id == ^alert_id)
+    |> select([response], response.responder_id)
+    |> Repo.all()
   end
 
   defp maybe_put_recipient_ids(args, nil), do: args

@@ -12,6 +12,7 @@ defmodule BotonBackend.Alerts do
   alias BotonBackendWeb.Endpoint
   alias BotonBackendWeb.Serializers
   alias Ecto.Multi
+  require Logger
 
   @alert_rate_limit_window_seconds 900
   @alert_rate_limit_max 10
@@ -167,6 +168,7 @@ defmodule BotonBackend.Alerts do
           alert = Repo.get!(Alert, alert_id) |> Repo.preload(sender: :profile)
           broadcast_responses_updated(alert_id)
           broadcast_user_alerts(alert)
+          maybe_deliver_alert_response_update(alert, user_id, status)
           {:ok, :responded}
 
         {:error, changeset} ->
@@ -215,6 +217,7 @@ defmodule BotonBackend.Alerts do
 
           alert = Repo.get!(Alert, alert_id) |> Repo.preload(sender: :profile)
           broadcast_user_alerts(alert)
+          maybe_deliver_alert_message_update(alert, alert_message)
 
           {:ok, Serializers.alert_message(alert_message)}
 
@@ -341,7 +344,6 @@ defmodule BotonBackend.Alerts do
   end
 
   defp broadcast_alert_update(alert) do
-    require Logger
     Logger.info("Broadcasting alert.updated to alert:#{alert.id} status=#{alert.status}")
     Endpoint.broadcast!("alert:#{alert.id}", "alert.updated", %{alert: Serializers.alert(alert)})
   end
@@ -354,7 +356,6 @@ defmodule BotonBackend.Alerts do
       |> Repo.preload(responder: :profile)
       |> Enum.map(&Serializers.alert_response/1)
 
-    require Logger
     Logger.info("Broadcasting responses.updated to alert:#{alert_id} with #{length(responses)} responses")
     Endpoint.broadcast!("alert:#{alert_id}", "responses.updated", %{responses: responses})
   end
@@ -380,6 +381,28 @@ defmodule BotonBackend.Alerts do
     |> where([response], response.alert_id == ^alert_id)
     |> select([response], response.responder_id)
     |> Repo.all()
+  end
+
+  defp maybe_deliver_alert_response_update(alert, user_id, status) do
+    case Notifications.deliver_alert_response_update(alert, user_id, status) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Failed to deliver alert response update push for #{alert.id}: #{inspect(reason)}")
+        :ok
+    end
+  end
+
+  defp maybe_deliver_alert_message_update(alert, alert_message) do
+    case Notifications.deliver_alert_message_update(alert, alert_message) do
+      :ok ->
+        :ok
+
+      {:error, reason} ->
+        Logger.warning("Failed to deliver alert message update push for #{alert.id}: #{inspect(reason)}")
+        :ok
+    end
   end
 
   defp insert_alert_recipients(_repo, _alert_id, [], _reason), do: {:ok, []}
