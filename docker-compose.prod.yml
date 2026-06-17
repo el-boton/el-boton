@@ -45,6 +45,9 @@ services:
       SKIP_MIGRATIONS: ${SKIP_MIGRATIONS:-false}
       APPLE_REVIEW_PHONE: ${APPLE_REVIEW_PHONE:-}
       APPLE_REVIEW_CODE: ${APPLE_REVIEW_CODE:-}
+      # Shared secret for POST /partner/provision (villa-tablet emergency button).
+      # Unset → the endpoint is disabled (503), node still boots.
+      PARTNER_PROVISION_SECRET: ${PARTNER_PROVISION_SECRET:-}
 
   cloudflared:
     image: cloudflare/cloudflared:latest
