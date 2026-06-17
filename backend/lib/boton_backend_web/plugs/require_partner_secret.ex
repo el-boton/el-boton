@@ -22,7 +22,11 @@ defmodule BotonBackendWeb.Plugs.RequirePartnerSecret do
         |> ControllerHelpers.error(:service_unavailable, :not_configured, "Partner provisioning is not enabled")
         |> halt()
 
-      is_binary(provided) and Plug.Crypto.secure_compare(provided, configured) ->
+      # Hash both sides to a fixed 32 bytes before comparing: secure_compare/2
+      # short-circuits on length mismatch, which would otherwise leak the secret's
+      # length via timing. Hashing normalizes length and keeps it constant-time.
+      is_binary(provided) and
+          Plug.Crypto.secure_compare(:crypto.hash(:sha256, provided), :crypto.hash(:sha256, configured)) ->
         conn
 
       true ->

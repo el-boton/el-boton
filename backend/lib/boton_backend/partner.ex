@@ -37,9 +37,31 @@ defmodule BotonBackend.Partner do
   end
 
   defp do_provision(villa_ref, villa_name, context) do
-    case Repo.get_by(Premise, villa_ref: villa_ref) do
-      %Premise{} = premise -> reprovision(premise, context)
-      nil -> provision_new(villa_ref, villa_name, context)
+    # Serialize concurrent provisions for the SAME villa_ref under a transaction-
+    # scoped advisory lock, so two first-time calls can't both create the synthetic
+    # user (losing the unique-phone race → spurious 422) or strand a duplicate
+    # circle. Everything inside commits or rolls back atomically — no orphans.
+    txn =
+      Repo.transaction(fn ->
+        Repo.query!("SELECT pg_advisory_xact_lock(hashtext($1))", ["partner_provision:" <> villa_ref])
+
+        outcome =
+          case Repo.get_by(Premise, villa_ref: villa_ref) do
+            %Premise{} = premise -> reprovision(premise, context)
+            nil -> provision_new(villa_ref, villa_name, context)
+          end
+
+        case outcome do
+          {:ok, payload} -> payload
+          {:error, code, message} -> Repo.rollback({code, message})
+          other -> Repo.rollback({:provision_failed, "unexpected: #{inspect(other)}"})
+        end
+      end)
+
+    case txn do
+      {:ok, payload} -> {:ok, payload}
+      {:error, {code, message}} when is_atom(code) -> {:error, code, message}
+      {:error, _other} -> {:error, :provision_failed, "Could not provision the premises"}
     end
   end
 
@@ -52,23 +74,15 @@ defmodule BotonBackend.Partner do
     end
   end
 
+  # Runs inside do_provision's advisory-locked transaction, so it's the sole
+  # provisioner for this villa_ref — no insert_premise race to handle, and any
+  # failure rolls the whole unit back (no orphan user/circle/token/mapping).
   defp provision_new(villa_ref, villa_name, context) do
-    # The synthetic phone is deterministic from villa_ref, so the user is itself
-    # idempotent; the villa_ref unique index is the race guard on the mapping.
     with {:ok, %{user: user, refresh_token: refresh_token}} <-
            Accounts.provision_partner_user(synthetic_phone(villa_ref), context),
-         {:ok, circle} <- Circles.create_circle(user.id, villa_name) do
-      case insert_premise(villa_ref, user.id, circle.id, circle.invite_code) do
-        {:ok, _premise} ->
-          {:ok, result(user.id, circle.id, circle.invite_code, refresh_token)}
-
-        {:error, _changeset} ->
-          # Lost a villa_ref race — return whatever is now persisted.
-          case Repo.get_by(Premise, villa_ref: villa_ref) do
-            %Premise{} = p -> {:ok, result(p.user_id, p.circle_id, p.invite_code, refresh_token)}
-            nil -> {:error, :provision_failed, "Could not store the premises mapping"}
-          end
-      end
+         {:ok, circle} <- Circles.create_circle(user.id, villa_name),
+         {:ok, _premise} <- insert_premise(villa_ref, user.id, circle.id, circle.invite_code) do
+      {:ok, result(user.id, circle.id, circle.invite_code, refresh_token)}
     else
       {:error, code, message} when is_atom(code) -> {:error, code, message}
       _ -> {:error, :provision_failed, "Could not provision the premises"}
