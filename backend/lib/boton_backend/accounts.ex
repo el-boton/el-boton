@@ -28,11 +28,26 @@ defmodule BotonBackend.Accounts do
   OTP path so token hashing and TTLs stay identical. Returns
   `{:ok, %{user: user, refresh_token: raw_token}}`.
   """
-  def provision_partner_user(phone, context) do
+  def provision_partner_user(phone, display_name, context) do
     with {:ok, user} <- get_or_create_user(phone),
-         {:ok, _profile} <- ensure_profile(user),
+         {:ok, _profile} <- upsert_partner_profile(user, display_name),
          {:ok, refresh} <- create_refresh_token(user, context) do
       {:ok, %{user: user, refresh_token: refresh.raw_token}}
+    end
+  end
+
+  # Set the premises profile's display_name to the villa name so the account shows
+  # the villa (not a blank/"unknown") wherever El Boton surfaces it — alert sender,
+  # circle member list, etc. Upserts so re-provisioning refreshes a renamed villa.
+  defp upsert_partner_profile(%User{} = user, display_name) do
+    case Repo.get(Profile, user.id) do
+      %Profile{} = profile ->
+        profile |> Profile.changeset(%{display_name: display_name}) |> Repo.update()
+
+      nil ->
+        %Profile{id: user.id}
+        |> Profile.changeset(%{phone: user.phone, display_name: display_name})
+        |> Repo.insert()
     end
   end
 

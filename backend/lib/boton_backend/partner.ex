@@ -47,7 +47,7 @@ defmodule BotonBackend.Partner do
 
         outcome =
           case Repo.get_by(Premise, villa_ref: villa_ref) do
-            %Premise{} = premise -> reprovision(premise, context)
+            %Premise{} = premise -> reprovision(premise, villa_name, context)
             nil -> provision_new(villa_ref, villa_name, context)
           end
 
@@ -65,9 +65,9 @@ defmodule BotonBackend.Partner do
     end
   end
 
-  defp reprovision(%Premise{} = premise, context) do
+  defp reprovision(%Premise{} = premise, villa_name, context) do
     with {:ok, %{refresh_token: refresh_token}} <-
-           Accounts.provision_partner_user(synthetic_phone(premise.villa_ref), context) do
+           Accounts.provision_partner_user(synthetic_phone(premise.villa_ref), villa_name, context) do
       {:ok, result(premise.user_id, premise.circle_id, premise.invite_code, refresh_token)}
     else
       _ -> {:error, :provision_failed, "Could not refresh the premises token"}
@@ -79,7 +79,7 @@ defmodule BotonBackend.Partner do
   # failure rolls the whole unit back (no orphan user/circle/token/mapping).
   defp provision_new(villa_ref, villa_name, context) do
     with {:ok, %{user: user, refresh_token: refresh_token}} <-
-           Accounts.provision_partner_user(synthetic_phone(villa_ref), context),
+           Accounts.provision_partner_user(synthetic_phone(villa_ref), villa_name, context),
          {:ok, circle} <- Circles.create_circle(user.id, villa_name),
          {:ok, _premise} <- insert_premise(villa_ref, user.id, circle.id, circle.invite_code) do
       {:ok, result(user.id, circle.id, circle.invite_code, refresh_token)}
