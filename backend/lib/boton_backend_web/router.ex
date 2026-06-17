@@ -22,8 +22,20 @@ defmodule BotonBackendWeb.Router do
     plug BotonBackendWeb.Plugs.RequireAuthenticatedUser
   end
 
+  pipeline :partner_api do
+    plug :accepts, ["json"]
+    plug BotonBackendWeb.Plugs.RateLimit, limit: 30, period_ms: 60_000, key_prefix: "partner"
+    plug BotonBackendWeb.Plugs.RequirePartnerSecret
+  end
+
   scope "/", BotonBackendWeb do
     get "/join/:code", InviteController, :show
+  end
+
+  scope "/partner", BotonBackendWeb do
+    pipe_through :partner_api
+
+    post "/provision", PartnerController, :provision
   end
 
   scope "/", BotonBackendWeb do

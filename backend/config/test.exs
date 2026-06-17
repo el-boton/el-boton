@@ -54,3 +54,5 @@ config :boton_backend, BotonBackend.Privacy,
   alert_location_ttl_seconds: 7 * 24 * 60 * 60
 
 config :boton_backend, BotonBackend.Notifications.ExpoClient, enabled: false
+
+config :boton_backend, BotonBackend.Partner, provision_secret: "test-partner-provision-secret"

@@ -31,6 +31,15 @@ end
 config :boton_backend, BotonBackendWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
+# Static shared secret for the server-to-server partner provisioning endpoint
+# (POST /partner/provision). OPTIONAL ON PURPOSE: when unset the endpoint is
+# disabled (503) and the node still boots — so deploying this can never crash a
+# running server. Set PARTNER_PROVISION_SECRET to enable it. Only override when
+# the var is actually present, so this never clobbers the compile-time test value.
+if partner_secret = optional_env.("PARTNER_PROVISION_SECRET") do
+  config :boton_backend, BotonBackend.Partner, provision_secret: partner_secret
+end
+
 if config_env() != :test do
   expo_access_token = optional_env.("EXPO_ACCESS_TOKEN")
 

@@ -1,0 +1,101 @@
+defmodule BotonBackend.Partner do
+  @moduledoc """
+  Server-to-server provisioning for trusted partner integrations (the villa-tablet
+  emergency-button integration). Creates a synthetic "premises" user + a responder
+  circle for a partner's villa, without the phone-OTP flow, and hands back a refresh
+  token the partner replays to mint access JWTs.
+
+  Authenticated by a static shared secret (see Plugs.RequirePartnerSecret). The
+  secret is optional at boot: when unset the endpoint is simply disabled (503), so
+  deploying this code can never crash a running node.
+  """
+
+  alias BotonBackend.{Accounts, Circles, Repo}
+  alias BotonBackend.Partner.Premise
+  alias BotonBackendWeb.Endpoint
+
+  @doc "The configured provisioning secret, or nil when the feature is disabled."
+  def provision_secret do
+    Application.get_env(:boton_backend, __MODULE__, [])[:provision_secret]
+  end
+
+  @doc """
+  Idempotent on `villa_ref`. Creates (or reuses) the premises user + circle and
+  returns `%{user_id, circle_id, refresh_token, invite_link}`. Re-provisioning the
+  same `villa_ref` returns the existing user/circle with a freshly minted refresh
+  token (so the partner can recover a lost token).
+  """
+  def provision(villa_ref, villa_name, context) do
+    villa_ref = String.trim(to_string(villa_ref))
+    villa_name = String.trim(to_string(villa_name))
+
+    cond do
+      villa_ref == "" -> {:error, :invalid_villa_ref, "villa_ref is required"}
+      villa_name == "" -> {:error, :invalid_villa_name, "villa_name is required"}
+      true -> do_provision(villa_ref, villa_name, context)
+    end
+  end
+
+  defp do_provision(villa_ref, villa_name, context) do
+    case Repo.get_by(Premise, villa_ref: villa_ref) do
+      %Premise{} = premise -> reprovision(premise, context)
+      nil -> provision_new(villa_ref, villa_name, context)
+    end
+  end
+
+  defp reprovision(%Premise{} = premise, context) do
+    with {:ok, %{refresh_token: refresh_token}} <-
+           Accounts.provision_partner_user(synthetic_phone(premise.villa_ref), context) do
+      {:ok, result(premise.user_id, premise.circle_id, premise.invite_code, refresh_token)}
+    else
+      _ -> {:error, :provision_failed, "Could not refresh the premises token"}
+    end
+  end
+
+  defp provision_new(villa_ref, villa_name, context) do
+    # The synthetic phone is deterministic from villa_ref, so the user is itself
+    # idempotent; the villa_ref unique index is the race guard on the mapping.
+    with {:ok, %{user: user, refresh_token: refresh_token}} <-
+           Accounts.provision_partner_user(synthetic_phone(villa_ref), context),
+         {:ok, circle} <- Circles.create_circle(user.id, villa_name) do
+      case insert_premise(villa_ref, user.id, circle.id, circle.invite_code) do
+        {:ok, _premise} ->
+          {:ok, result(user.id, circle.id, circle.invite_code, refresh_token)}
+
+        {:error, _changeset} ->
+          # Lost a villa_ref race — return whatever is now persisted.
+          case Repo.get_by(Premise, villa_ref: villa_ref) do
+            %Premise{} = p -> {:ok, result(p.user_id, p.circle_id, p.invite_code, refresh_token)}
+            nil -> {:error, :provision_failed, "Could not store the premises mapping"}
+          end
+      end
+    else
+      {:error, code, message} when is_atom(code) -> {:error, code, message}
+      _ -> {:error, :provision_failed, "Could not provision the premises"}
+    end
+  end
+
+  defp insert_premise(villa_ref, user_id, circle_id, invite_code) do
+    %Premise{}
+    |> Premise.changeset(%{
+      villa_ref: villa_ref,
+      user_id: user_id,
+      circle_id: circle_id,
+      invite_code: invite_code
+    })
+    |> Repo.insert()
+  end
+
+  # Non-E.164 sentinel: never collides with a real phone and is rejected by the
+  # OTP path's E.164 check, so these accounts can only ever be partner-provisioned.
+  defp synthetic_phone(villa_ref), do: "partner:" <> villa_ref
+
+  defp result(user_id, circle_id, invite_code, refresh_token) do
+    %{
+      user_id: user_id,
+      circle_id: circle_id,
+      refresh_token: refresh_token,
+      invite_link: Endpoint.url() <> "/join/" <> invite_code
+    }
+  end
+end

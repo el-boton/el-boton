@@ -21,6 +21,21 @@ defmodule BotonBackend.Accounts do
 
   def get_profile(user_id), do: Repo.get(Profile, user_id)
 
+  @doc """
+  Provisions (or reuses) a user from a synthetic, non-OTP phone identifier and
+  mints a fresh refresh token. Used by `BotonBackend.Partner` for server-to-server
+  premises provisioning. Reuses the same user/profile/refresh-token helpers as the
+  OTP path so token hashing and TTLs stay identical. Returns
+  `{:ok, %{user: user, refresh_token: raw_token}}`.
+  """
+  def provision_partner_user(phone, context) do
+    with {:ok, user} <- get_or_create_user(phone),
+         {:ok, _profile} <- ensure_profile(user),
+         {:ok, refresh} <- create_refresh_token(user, context) do
+      {:ok, %{user: user, refresh_token: refresh.raw_token}}
+    end
+  end
+
   def request_otp(phone, context, channel \\ "sms") do
     normalized_phone = normalize_phone(phone)
 
